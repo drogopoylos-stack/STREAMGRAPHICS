@@ -1,0 +1,104 @@
+{
+ "scene": "sponsors",
+ "mode": "full",
+ "league": {
+  "name": "Hellenic Legends League",
+  "short": "HLL",
+  "season": "Season 1",
+  "logo": "/brand/hll-logo.png"
+ },
+ "theme": {
+  "preset": "sparta",
+  "primary": "#141414",
+  "accent": "#c8102e",
+  "accent2": "#f2c230",
+  "text": "#ffffff",
+  "bgImage": null
+ },
+ "sponsors": [
+  {
+   "id": "m1",
+   "name": "Main Sponsor",
+   "logo": "/media/teams/t_b45219c0.png?v=mvuw5kte",
+   "tier": "main"
+  },
+  {
+   "id": "m2",
+   "name": "Second Main",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "main"
+  },
+  {
+   "id": "s2y0",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3y0",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  },
+  {
+   "id": "s4y0",
+   "name": "Partner C",
+   "logo": "/media/teams/t_5fb8c3ef.png?v=mvuw5s0p",
+   "tier": "partner"
+  },
+  {
+   "id": "s5y0",
+   "name": "Partner D",
+   "logo": "/media/teams/t_1dc1c70e.png?v=mvuw5vot",
+   "tier": "partner"
+  },
+  {
+   "id": "s6y0",
+   "name": "Broken Sponsor",
+   "logo": "/media/sponsors/missing.png",
+   "tier": "partner"
+  },
+  {
+   "id": "s2y1",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3y1",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  },
+  {
+   "id": "s4y1",
+   "name": "Partner C",
+   "logo": "/media/teams/t_5fb8c3ef.png?v=mvuw5s0p",
+   "tier": "partner"
+  },
+  {
+   "id": "s5y1",
+   "name": "Partner D",
+   "logo": "/media/teams/t_1dc1c70e.png?v=mvuw5vot",
+   "tier": "partner"
+  },
+  {
+   "id": "s6y1",
+   "name": "Broken Sponsor",
+   "logo": "/media/sponsors/missing.png",
+   "tier": "partner"
+  },
+  {
+   "id": "s2y2",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3y2",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  }
+ ]
+}

@@ -1,0 +1,315 @@
+{
+ "scene": "schedule",
+ "mode": "full",
+ "league": {
+  "name": "Hellenic Legends League",
+  "short": "HLL",
+  "season": "Season 1",
+  "logo": "/brand/hll-logo.png"
+ },
+ "theme": {
+  "preset": "sparta",
+  "primary": "#141414",
+  "accent": "#c8102e",
+  "accent2": "#f2c230",
+  "text": "#ffffff",
+  "bgImage": null
+ },
+ "sponsors": [
+  {
+   "id": "s1",
+   "name": "Main Sponsor",
+   "logo": "/media/teams/t_b45219c0.png?v=mvuw5kte",
+   "tier": "main"
+  },
+  {
+   "id": "s2",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  },
+  {
+   "id": "s4",
+   "name": "Partner C",
+   "logo": "/media/teams/t_5fb8c3ef.png?v=mvuw5s0p",
+   "tier": "partner"
+  },
+  {
+   "id": "s5",
+   "name": "Partner D",
+   "logo": "/media/teams/t_1dc1c70e.png?v=mvuw5vot",
+   "tier": "partner"
+  },
+  {
+   "id": "s6",
+   "name": "Broken Sponsor",
+   "logo": "/media/sponsors/missing.png",
+   "tier": "partner"
+  }
+ ],
+ "date": "2026-10-31",
+ "dateLabel": "Σάββατο 31 Οκτωβρίου",
+ "matches": [
+  {
+   "id": "m_fx1",
+   "date": "2026-10-31",
+   "time": "16:00",
+   "teamA": {
+    "id": "t_b6c8cfa5",
+    "name": "Team Phantasma",
+    "tag": "TP",
+    "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+    "colors": {
+     "primary": "#9e9c9d",
+     "secondary": "#9e9c9d"
+    }
+   },
+   "teamB": {
+    "id": "t_274c7f9b",
+    "name": "Gamespace Mediterranean College",
+    "tag": "GSMC",
+    "logo": "/media/teams/t_274c7f9b.png?v=mvuw526r",
+    "colors": {
+     "primary": "#b1aaa9",
+     "secondary": "#2279b7"
+    }
+   },
+   "scoreA": 2,
+   "scoreB": 0,
+   "bestOf": 3,
+   "stage": "Split 3 - Regular Season",
+   "status": "done",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx2",
+   "date": "2026-10-31",
+   "time": "17:30",
+   "teamA": {
+    "id": "t_1ddf656c",
+    "name": "WLGaming Esports",
+    "tag": "WLG",
+    "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+    "colors": {
+     "primary": "#ff344c",
+     "secondary": "#ff3751"
+    }
+   },
+   "teamB": {
+    "id": "t_fake_gr",
+    "name": "Αθηναϊκοί Θρύλοι Ολυμπιακής Ακαδημίας",
+    "tag": "ΑΘΗ",
+    "logo": null,
+    "colors": {
+     "primary": "#1f4e9c",
+     "secondary": "#ffffff"
+    }
+   },
+   "scoreA": 1,
+   "scoreB": 1,
+   "bestOf": 3,
+   "stage": "Split 3 - Regular Season",
+   "status": "live",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx3",
+   "date": "2026-10-31",
+   "time": "19:00",
+   "teamA": {
+    "id": "t_1d5e0d60",
+    "name": "TheParadOX Invaders",
+    "tag": "TPX",
+    "logo": "/media/teams/t_1d5e0d60.png?v=mvuw5ftf",
+    "colors": {
+     "primary": "#ce2127",
+     "secondary": "#d32223"
+    }
+   },
+   "teamB": {
+    "id": "t_05575fd2",
+    "name": "Team Insidious",
+    "tag": "IN5",
+    "logo": "/media/teams/t_05575fd2.png?v=mvuw5jle",
+    "colors": {
+     "primary": "#ffffff",
+     "secondary": "#fefefe"
+    }
+   },
+   "scoreA": null,
+   "scoreB": null,
+   "bestOf": 3,
+   "stage": "Split 3 - Regular Season",
+   "status": "scheduled",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx4",
+   "date": "2026-10-31",
+   "time": "",
+   "teamA": {
+    "id": "t_fake_nl",
+    "name": "Kraken Esports",
+    "tag": "KRK",
+    "logo": "/media/teams/missing.png",
+    "colors": {
+     "primary": "#f2c230"
+    }
+   },
+   "teamB": {
+    "id": "t_b45219c0",
+    "name": "Valerion",
+    "tag": "VLR",
+    "logo": "/media/teams/t_b45219c0.png?v=mvuw5kte",
+    "colors": {
+     "primary": "#efc669",
+     "secondary": "#fcd16f"
+    }
+   },
+   "scoreA": null,
+   "scoreB": null,
+   "bestOf": 5,
+   "stage": "Split 3 - Playoffs Semifinal Upper Bracket",
+   "status": "scheduled",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx5",
+   "date": "2026-10-31",
+   "time": "20:30",
+   "teamA": {
+    "id": "t_5fb8c3ef",
+    "name": "ALMO Gaming",
+    "tag": "ALMO",
+    "logo": "/media/teams/t_5fb8c3ef.png?v=mvuw5s0p",
+    "colors": {
+     "primary": "#d7150e",
+     "secondary": "#dccecd"
+    }
+   },
+   "teamB": {
+    "id": "t_1dc1c70e",
+    "name": "HOWL Esports",
+    "tag": "HWL",
+    "logo": "/media/teams/t_1dc1c70e.png?v=mvuw5vot",
+    "colors": {
+     "primary": "#dbdad5",
+     "secondary": "#c71a1f"
+    }
+   },
+   "scoreA": null,
+   "scoreB": null,
+   "bestOf": 1,
+   "stage": "Split 3 - Regular Season",
+   "status": "scheduled",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx6",
+   "date": "2026-10-31",
+   "time": "21:30",
+   "teamA": {
+    "id": "t_c91d3ba0",
+    "name": "Spartans EU",
+    "tag": "SPAR",
+    "logo": "/media/teams/t_c91d3ba0.png?v=mvuw5wz5",
+    "colors": {
+     "primary": "#ddbb32",
+     "secondary": "#070605"
+    }
+   },
+   "teamB": {
+    "id": "t_d12cb795",
+    "name": "HELL Zerolag Esports",
+    "tag": "HELL",
+    "logo": "/media/teams/t_d12cb795.png?v=mvuw648v",
+    "colors": {
+     "primary": "#ffffff",
+     "secondary": "#fefefe"
+    }
+   },
+   "scoreA": null,
+   "scoreB": null,
+   "bestOf": 3,
+   "stage": "Split 3 - Regular Season",
+   "status": "scheduled",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx7",
+   "date": "2026-10-31",
+   "time": "22:30",
+   "teamA": {
+    "id": "t_274c7f9b",
+    "name": "Gamespace Mediterranean College",
+    "tag": "GSMC",
+    "logo": "/media/teams/t_274c7f9b.png?v=mvuw526r",
+    "colors": {
+     "primary": "#b1aaa9",
+     "secondary": "#2279b7"
+    }
+   },
+   "teamB": {
+    "id": "t_1d5e0d60",
+    "name": "TheParadOX Invaders",
+    "tag": "TPX",
+    "logo": "/media/teams/t_1d5e0d60.png?v=mvuw5ftf",
+    "colors": {
+     "primary": "#ce2127",
+     "secondary": "#d32223"
+    }
+   },
+   "scoreA": null,
+   "scoreB": null,
+   "bestOf": 3,
+   "stage": "Split 3 - Regular Season",
+   "status": "scheduled",
+   "vod": null,
+   "hasStats": false
+  },
+  {
+   "id": "m_fx8",
+   "date": "2026-10-31",
+   "time": "23:30",
+   "teamA": {
+    "id": "t_b45219c0",
+    "name": "Valerion",
+    "tag": "VLR",
+    "logo": "/media/teams/t_b45219c0.png?v=mvuw5kte",
+    "colors": {
+     "primary": "#efc669",
+     "secondary": "#fcd16f"
+    }
+   },
+   "teamB": {
+    "id": "t_b6c8cfa5",
+    "name": "Team Phantasma",
+    "tag": "TP",
+    "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+    "colors": {
+     "primary": "#9e9c9d",
+     "secondary": "#9e9c9d"
+    }
+   },
+   "scoreA": null,
+   "scoreB": null,
+   "bestOf": 5,
+   "stage": "Grand Final",
+   "status": "scheduled",
+   "vod": null,
+   "hasStats": false
+  }
+ ]
+}

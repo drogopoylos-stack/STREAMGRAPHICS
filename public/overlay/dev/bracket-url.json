@@ -1,0 +1,24 @@
+{
+ "scene": "bracket",
+ "mode": "full",
+ "league": {
+  "name": "Hellenic Legends League",
+  "short": "HLL",
+  "season": "Season 1 UI",
+  "logo": "/brand/hll-logo.png"
+ },
+ "theme": {
+  "preset": "sparta",
+  "primary": "#141414",
+  "accent": "#c8102e",
+  "accent2": "#f2c230",
+  "text": "#ffffff",
+  "bgImage": null
+ },
+ "sponsors": [],
+ "embed": {
+  "type": "url",
+  "src": "http://localhost:4610/overlay/scene.html?scene=schedule&bg=0&static=1&data=/overlay/dev/schedule-4.json",
+  "html": ""
+ }
+}

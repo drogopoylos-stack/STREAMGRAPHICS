@@ -1,0 +1,74 @@
+{
+ "scene": "sponsors",
+ "mode": "full",
+ "league": {
+  "name": "Hellenic Legends League",
+  "short": "HLL",
+  "season": "Season 1",
+  "logo": "/brand/hll-logo.png"
+ },
+ "theme": {
+  "preset": "sparta",
+  "primary": "#141414",
+  "accent": "#c8102e",
+  "accent2": "#f2c230",
+  "text": "#ffffff",
+  "bgImage": null
+ },
+ "sponsors": [
+  {
+   "id": "s2x0",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3x0",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  },
+  {
+   "id": "s4x0",
+   "name": "Partner C",
+   "logo": "/media/teams/t_5fb8c3ef.png?v=mvuw5s0p",
+   "tier": "partner"
+  },
+  {
+   "id": "s5x0",
+   "name": "Partner D",
+   "logo": "/media/teams/t_1dc1c70e.png?v=mvuw5vot",
+   "tier": "partner"
+  },
+  {
+   "id": "s6x0",
+   "name": "Broken Sponsor",
+   "logo": "/media/sponsors/missing.png",
+   "tier": "partner"
+  },
+  {
+   "id": "s2x1",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3x1",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  },
+  {
+   "id": "s4x1",
+   "name": "Partner C",
+   "logo": "/media/teams/t_5fb8c3ef.png?v=mvuw5s0p",
+   "tier": "partner"
+  },
+  {
+   "id": "s5x1",
+   "name": "Partner D",
+   "logo": "/media/teams/t_1dc1c70e.png?v=mvuw5vot",
+   "tier": "partner"
+  }
+ ]
+}

@@ -1,0 +1,519 @@
+{
+ "scene": "simple-vs",
+ "mode": "full",
+ "league": {
+  "name": "Hellenic Legends League",
+  "short": "HLL",
+  "season": "Season 1",
+  "logo": "/brand/hll-logo.png"
+ },
+ "theme": {
+  "preset": "sparta",
+  "primary": "#141414",
+  "accent": "#c8102e",
+  "accent2": "#f2c230",
+  "text": "#ffffff",
+  "bgImage": null
+ },
+ "sponsors": [
+  {
+   "id": "s1",
+   "name": "Main Sponsor",
+   "logo": "/media/teams/t_b45219c0.png?v=mvuw5kte",
+   "tier": "main"
+  },
+  {
+   "id": "s2",
+   "name": "Partner A",
+   "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+   "tier": "partner"
+  },
+  {
+   "id": "s3",
+   "name": "Partner B",
+   "logo": "/media/teams/t_1ddf656c.png?v=mvuw592u",
+   "tier": "partner"
+  }
+ ],
+ "match": {
+  "id": "m_926bc740",
+  "source": "hllgr",
+  "extId": "vlr-vs-tp-2026-09-12",
+  "date": "2026-10-31",
+  "time": "20:00",
+  "teamA": "t_b45219c0",
+  "teamB": "t_b6c8cfa5",
+  "scoreA": null,
+  "scoreB": null,
+  "bestOf": 3,
+  "stage": "Split 3 - Playoffs",
+  "status": "scheduled",
+  "url": "https://hll.gr/game/vlr-vs-tp-2026-09-12/",
+  "vod": null,
+  "statsChecked": true,
+  "hasStats": false
+ },
+ "teamA": {
+  "id": "t_b45219c0",
+  "name": "Αθηναϊκοί Θρύλοι Ολυμπιακής Ακαδημίας",
+  "tag": "ΑΘΗ",
+  "logo": null,
+  "colors": {
+   "primary": "#1f4e9c"
+  },
+  "source": "hllgr",
+  "extId": "vlr",
+  "url": "https://hll.gr/team/vlr/",
+  "logoRaw": "G:\\HLLTEST\\data\\raw\\teams\\t_b45219c0.png",
+  "logoSrc": "https://hll.gr/files/2026/06/logo_white-2.png"
+ },
+ "teamB": {
+  "id": "t_b6c8cfa5",
+  "name": "Team Phantasma",
+  "tag": "TP",
+  "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+  "colors": {
+   "primary": "#9e9c9d",
+   "secondary": "#9e9c9d"
+  },
+  "source": "hllgr",
+  "extId": "tp",
+  "url": "https://hll.gr/team/tp/",
+  "logoRaw": "G:\\HLLTEST\\data\\raw\\teams\\t_b6c8cfa5.png",
+  "logoSrc": "https://hll.gr/files/2026/01/logo_white-5.png"
+ },
+ "playersA": [
+  {
+   "id": "p_6c21f863",
+   "teamId": "t_b45219c0",
+   "nick": "kPr",
+   "name": "Grebonos Maxim",
+   "role": "Top",
+   "photo": null,
+   "country": "md",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "kpr",
+   "hidden": false,
+   "url": "https://hll.gr/player/kpr/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_6c21f863.png",
+   "photoStats": {
+    "mean": [
+     13.685616496531404,
+     3.2947023694133706,
+     4.311601054598355
+    ],
+    "std": [
+     21.597417627901493,
+     7.148495658482415,
+     9.689988892474599
+    ],
+    "count": 24371
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/kpr-photo-2.png"
+  },
+  {
+   "id": "p_1cf3a576",
+   "teamId": "t_b45219c0",
+   "nick": "Cboi",
+   "name": "Casper Bo",
+   "role": "Jungle",
+   "photo": null,
+   "country": "dk",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "cboi",
+   "hidden": false,
+   "url": "https://hll.gr/player/cboi/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_1cf3a576.png",
+   "photoStats": {
+    "mean": [
+     10.47723778337353,
+     2.6790401270372595,
+     1.791726670624408
+    ],
+    "std": [
+     18.51761024088909,
+     6.650529967518269,
+     6.497562013598447
+    ],
+    "count": 23056
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/cboi-photo-2.png"
+  },
+  {
+   "id": "p_b7bfc00d",
+   "teamId": "t_b45219c0",
+   "nick": "Peppe",
+   "name": "Petros Mperdempes",
+   "role": "Mid",
+   "photo": "/media/players/p_b7bfc00d.png?v=mvuw5mc6",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "peppe",
+   "hidden": false,
+   "url": "https://hll.gr/player/peppe/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_b7bfc00d.png",
+   "photoStats": {
+    "mean": [
+     10.17625962022204,
+     2.7154799889027066,
+     2.1847077266016623
+    ],
+    "std": [
+     20.873087743922152,
+     5.507580737855334,
+     5.216121140786393
+    ],
+    "count": 90554
+   },
+   "bgRemoved": false,
+   "photoSrc": "https://hll.gr/files/2026/06/peppe-photo-1.png"
+  },
+  {
+   "id": "p_b06f1de4",
+   "teamId": "t_b45219c0",
+   "nick": "Unkn0wn",
+   "name": "Paraskevas Fragkos",
+   "role": "Bot",
+   "photo": "/media/players/p_b06f1de4.png?v=mvuw5mzl",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "unkn0wn",
+   "hidden": false,
+   "url": "https://hll.gr/player/unkn0wn/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_b06f1de4.png",
+   "photoStats": {
+    "mean": [
+     14.678082232454972,
+     3.0287588624105104,
+     3.2353569976473726
+    ],
+    "std": [
+     19.085470781027084,
+     5.73826565174323,
+     5.72998611424015
+    ],
+    "count": 23770
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/unkn0wn-photo-1.png"
+  },
+  {
+   "id": "p_fa2d57d0",
+   "teamId": "t_b45219c0",
+   "nick": "Speedy1",
+   "name": "Loukas Prekas",
+   "role": "Support",
+   "photo": "/media/players/p_fa2d57d0.png?v=mvuw5nmd",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "speedy1",
+   "hidden": false,
+   "url": "https://hll.gr/player/speedy1/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_fa2d57d0.png",
+   "photoStats": {
+    "mean": [
+     10.507323732434006,
+     2.5676632057776767,
+     3.8539694517178638
+    ],
+    "std": [
+     20.342062456159095,
+     6.602529904375497,
+     9.54810369604689
+    ],
+    "count": 25255
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/speedy1-photo-2.png"
+  },
+  {
+   "id": "p_9aeb454a",
+   "teamId": "t_b45219c0",
+   "nick": "EnLightEnd",
+   "name": "Dionysios Mpiazis",
+   "role": "",
+   "photo": "/media/players/p_9aeb454a.png?v=mvuw5oa4",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "enlightend",
+   "hidden": false,
+   "url": "https://hll.gr/player/enlightend/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_9aeb454a.png",
+   "photoStats": {
+    "mean": [
+     10.648666712600553,
+     3.319029981465122,
+     3.886285141704097
+    ],
+    "std": [
+     18.3267556068721,
+     7.509299667898667,
+     9.792449850844527
+    ],
+    "count": 23960
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/enlightend-photo-2.png"
+  }
+ ],
+ "playersB": [
+  {
+   "id": "p_54599c01",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Goldmen",
+   "name": "Aleksander Piskorz",
+   "role": "Top",
+   "photo": "/media/players/p_54599c01.png?v=mvuw4vye",
+   "country": "pl",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "goldmen",
+   "hidden": false,
+   "url": "https://hll.gr/player/goldmen/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_54599c01.png",
+   "photoStats": {
+    "mean": [
+     25.21709716705588,
+     8.564694337746108,
+     6.823483127452999
+    ],
+    "std": [
+     30.61994447939623,
+     12.300624452998235,
+     13.240226003956558
+    ],
+    "count": 19690
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/goldmen-photo-1.png"
+  },
+  {
+   "id": "p_52373525",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Drofan",
+   "name": "Avraam Tsakiridis",
+   "role": "Jungle",
+   "photo": "/media/players/p_52373525.png?v=mvuw4wmm",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "drofan",
+   "hidden": false,
+   "url": "https://hll.gr/player/drofan/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_52373525.png",
+   "photoStats": {
+    "mean": [
+     11.289883631028465,
+     2.418179838113778,
+     2.5553494359678637
+    ],
+    "std": [
+     20.57964594020394,
+     6.848116863397932,
+     9.90487636772642
+    ],
+    "count": 23953
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/drofan-photo-1.png"
+  },
+  {
+   "id": "p_1484e1b6",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Secrett",
+   "name": "Maciej Charzyński",
+   "role": "Mid",
+   "photo": "/media/players/p_1484e1b6.png?v=mvuw4wua",
+   "country": "pl",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "secrett",
+   "hidden": false,
+   "url": "https://hll.gr/player/secrett/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_1484e1b6.png",
+   "photoStats": {
+    "mean": [
+     35.383875566870266,
+     6.201372382244474,
+     9.75073704068366
+    ],
+    "std": [
+     30.961836809601238,
+     7.9077263056363964,
+     12.998404517767732
+    ],
+    "count": 44953
+   },
+   "bgRemoved": false,
+   "photoSrc": "https://hll.gr/files/2026/06/secrett-photo-2.png"
+  },
+  {
+   "id": "p_c084c68f",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Wicked",
+   "name": "Fares Bouhajja",
+   "role": "Mid",
+   "photo": "/media/players/p_c084c68f.png?v=mvuw4ycn",
+   "country": "tn",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "wicked",
+   "hidden": false,
+   "url": "https://hll.gr/player/wicked/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_c084c68f.png",
+   "photoStats": {
+    "mean": [
+     27.08238589214583,
+     6.122302418966901,
+     1.1990017106005875
+    ],
+    "std": [
+     27.775117512207725,
+     8.806584927013429,
+     15.18530145109733
+    ],
+    "count": 49567
+   },
+   "bgRemoved": false,
+   "photoSrc": "https://hll.gr/files/2026/07/wicked-photo-1.png"
+  },
+  {
+   "id": "p_3679b429",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Evangelyne",
+   "name": "Pierre Sauvage",
+   "role": "Bot",
+   "photo": "/media/players/p_3679b429.png?v=mvuw4xh7",
+   "country": "be",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "evangelyne",
+   "hidden": false,
+   "url": "https://hll.gr/player/evangelyne/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_3679b429.png",
+   "photoStats": {
+    "mean": [
+     21.467084832939587,
+     4.54430600505195,
+     7.0810281644927855
+    ],
+    "std": [
+     28.99040101601765,
+     7.860479591396834,
+     13.838915906639562
+    ],
+    "count": 20417
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/evangelyne-photo-1.png"
+  },
+  {
+   "id": "p_bb13a885",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Yolotelis",
+   "name": "Aristotelis Sakellakis",
+   "role": "Bot",
+   "photo": "/media/players/p_bb13a885.png?v=mvuw4ykt",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "yolotelis",
+   "hidden": false,
+   "url": "https://hll.gr/player/yolotelis/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_bb13a885.png",
+   "photoStats": {
+    "mean": [
+     17.925602977848293,
+     3.585451578936102,
+     4.289023221166204
+    ],
+    "std": [
+     21.386274901914128,
+     7.0388426066370995,
+     12.847878972025269
+    ],
+    "count": 45611
+   },
+   "bgRemoved": false,
+   "photoSrc": "https://hll.gr/files/2026/07/yolotelis-photo-1.png"
+  },
+  {
+   "id": "p_9ba7f4cd",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Centu",
+   "name": "Spyridon Pantelopoulos",
+   "role": "Support",
+   "photo": "/media/players/p_9ba7f4cd.png?v=mvuw4y5u",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "centu",
+   "hidden": false,
+   "url": "https://hll.gr/player/centu/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_9ba7f4cd.png",
+   "photoStats": {
+    "mean": [
+     22.224159691316473,
+     5.5492499664748,
+     4.028582775378602
+    ],
+    "std": [
+     29.484403000637265,
+     9.041669732369416,
+     9.917874637455133
+    ],
+    "count": 20245
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/centu-photo-1.png"
+  },
+  {
+   "id": "p_90989427",
+   "teamId": "t_b6c8cfa5",
+   "nick": "Ambitionless",
+   "name": "Angelos Mitropoulos",
+   "role": "",
+   "photo": "/media/players/p_90989427.png?v=mvuw50j8",
+   "country": "gr",
+   "captain": false,
+   "source": "hllgr",
+   "extId": "ambitionless",
+   "hidden": false,
+   "url": "https://hll.gr/player/ambitionless/",
+   "photoRaw": "G:\\HLLTEST\\data\\raw\\players\\p_90989427.png",
+   "photoStats": {
+    "mean": [
+     25.2061586422987,
+     5.306952174123976,
+     6.868698248657439
+    ],
+    "std": [
+     26.923890584459112,
+     6.920696107784312,
+     10.971746703990084
+    ],
+    "count": 16430
+   },
+   "bgRemoved": true,
+   "photoSrc": "https://hll.gr/files/2026/06/ambitionless-photo-1.png"
+  }
+ ],
+ "recordA": {
+  "w": 18,
+  "l": 5,
+  "played": 27
+ },
+ "recordB": {
+  "w": 14,
+  "l": 6,
+  "played": 28
+ }
+}

@@ -1,0 +1,55 @@
+{
+ "scene": "schedule",
+ "mode": "full",
+ "league": {
+  "name": "Hellenic Legends League",
+  "short": "HLL",
+  "season": "Season 1",
+  "logo": "/brand/hll-logo.png"
+ },
+ "theme": {
+  "preset": "sparta",
+  "primary": "#141414",
+  "accent": "#c8102e",
+  "accent2": "#f2c230",
+  "text": "#ffffff",
+  "bgImage": null
+ },
+ "sponsors": [],
+ "date": "2026-10-31",
+ "dateLabel": "Σάββατο 31 Οκτωβρίου",
+ "matches": [
+  {
+   "id": "m_fx1",
+   "date": "2026-10-31",
+   "time": "16:00",
+   "teamA": {
+    "id": "t_b6c8cfa5",
+    "name": "Team Phantasma",
+    "tag": "TP",
+    "logo": "/media/teams/t_b6c8cfa5.png?v=mvuw4v2a",
+    "colors": {
+     "primary": "#9e9c9d",
+     "secondary": "#9e9c9d"
+    }
+   },
+   "teamB": {
+    "id": "t_274c7f9b",
+    "name": "Gamespace Mediterranean College",
+    "tag": "GSMC",
+    "logo": "/media/teams/t_274c7f9b.png?v=mvuw526r",
+    "colors": {
+     "primary": "#b1aaa9",
+     "secondary": "#2279b7"
+    }
+   },
+   "scoreA": 2,
+   "scoreB": 0,
+   "bestOf": 3,
+   "stage": "Split 3 - Regular Season",
+   "status": "done",
+   "vod": null,
+   "hasStats": false
+  }
+ ]
+}

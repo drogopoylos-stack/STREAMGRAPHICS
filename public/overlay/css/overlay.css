@@ -1,0 +1,152 @@
+/* HLL broadcast graphics — base, stage and shared components. Canvas: 1920×1080 CSS px. */
+:root {
+  --primary: #141414; --primary-rgb: 20,20,20;
+  --accent: #c8102e; --accent-rgb: 200,16,46;
+  --accent2: #f2c230; --accent2-rgb: 242,194,48;
+  --text: #ffffff; --text-rgb: 255,255,255;
+  --f-display: 'Fira Sans Extra Condensed', 'Fira Sans Condensed', 'Arial Narrow', sans-serif;
+  --f-ui: 'Fira Sans Condensed', 'Fira Sans Extra Condensed', 'Arial Narrow', sans-serif;
+  --f-num: 'Commissioner Variable', 'Fira Sans Condensed', sans-serif;
+  --f-serif: 'Noto Serif Display', Georgia, serif;
+  --glass: rgba(12,12,12,.80);
+  --glass-strong: rgba(10,10,10,.90);
+  --hair: rgba(var(--accent2-rgb), .30);
+  --meander: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><path d='M0 18.7H20M16.3 18.7V1.3H3.7V14.7H12.7V5.3H7.7V10.6H10.3' fill='none' stroke='black' stroke-width='1.9'/></svg>");
+}
+
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+body { color: var(--text); font-family: var(--f-ui); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; contain: layout paint; }
+* { box-sizing: border-box; }
+img { -webkit-user-drag: none; user-select: none; }
+
+.scene { position: absolute; inset: 0; overflow: hidden; }
+.is-static *, .is-static *::before, .is-static *::after { animation: none !important; transition: none !important; }
+
+/* ---------- plate ---------- */
+.plate { position: absolute; inset: 0; overflow: hidden; }
+.plate-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.plate-shade { position: absolute; inset: 0; }
+
+/* ---------- auto-fit text ---------- */
+.fit { display: block; white-space: nowrap; overflow: hidden; min-width: 0; max-width: 100%; }
+.fit[data-lines] { white-space: normal; overflow-wrap: normal; word-break: normal; }
+.fit.fit-wrapped { display: grid; align-content: center; text-wrap: balance; }
+.fit-clip { text-overflow: ellipsis; }
+
+/* ---------- typography ---------- */
+.kicker { font: 700 22px/1 var(--f-ui); letter-spacing: .28em; text-transform: uppercase; color: var(--accent2); }
+.display { font-family: var(--f-display); font-weight: 900; text-transform: uppercase; line-height: .92; letter-spacing: .005em; }
+.muted { color: rgba(var(--text-rgb), .72); }
+
+/* ---------- glass panels with classical corner ticks ---------- */
+.glass {
+  position: relative;
+  background: linear-gradient(180deg, rgba(30,30,30,.78), rgba(10,10,10,.88));
+  box-shadow: inset 0 0 0 1px var(--hair), 0 18px 50px rgba(0,0,0,.45);
+}
+.bg-off .glass { background: linear-gradient(180deg, rgba(24,24,24,.90), rgba(8,8,8,.93)); }
+.ticks::before, .ticks::after {
+  content: ''; position: absolute; width: 22px; height: 22px; pointer-events: none;
+  border: 0 solid var(--accent2);
+}
+.ticks::before { left: -1px; top: -1px; border-left-width: 3px; border-top-width: 3px; }
+.ticks::after { right: -1px; bottom: -1px; border-right-width: 3px; border-bottom-width: 3px; }
+
+/* ---------- meander band ---------- */
+.meander {
+  height: 14px; background-color: var(--accent2); opacity: .55;
+  -webkit-mask-image: var(--meander); -webkit-mask-repeat: repeat-x; -webkit-mask-size: auto 100%; -webkit-mask-position: center;
+  mask-image: var(--meander); mask-repeat: repeat-x; mask-size: auto 100%; mask-position: center;
+}
+.rule { height: 2px; background: linear-gradient(90deg, transparent, rgba(var(--accent2-rgb), .75) 18%, rgba(var(--accent2-rgb), .75) 82%, transparent); }
+
+/* ---------- laurel ---------- */
+.laurel { width: 1em; height: 1em; color: var(--accent2); flex: none; }
+
+/* ---------- league logo ---------- */
+.league-logo { display: flex; align-items: center; justify-content: center; }
+.league-logo img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 24px rgba(0,0,0,.55)); }
+.league-mono { font: 900 48px/1 var(--f-display); color: var(--accent2); }
+
+/* ---------- team logos / crests ---------- */
+.tlogo { display: flex; align-items: center; justify-content: center; }
+.tlogo > img, .tlogo > svg { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+
+.crest { position: relative; flex: none; }
+.crest-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(255,255,255,.10), rgba(255,255,255,0) 55%),
+    radial-gradient(circle, rgba(18,18,18,.92) 0 64%, rgba(10,10,10,.86) 71%, rgba(10,10,10,.0) 72%);
+  box-shadow:
+    0 0 0 2px rgba(var(--accent2-rgb), .9),
+    0 0 0 9px rgba(12,12,12,.82),
+    0 0 0 10.5px rgba(var(--accent2-rgb), .38),
+    0 22px 60px rgba(0,0,0,.6);
+}
+.crest-ring::before {
+  content: ''; position: absolute; inset: 4.5%; border-radius: 50%;
+  border: 2px dotted rgba(var(--accent2-rgb), .45);
+}
+.crest-ring::after {
+  content: ''; position: absolute; inset: 9%; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(var(--accent2-rgb), .18), inset 0 -30px 60px rgba(var(--accent-rgb), .16);
+}
+.crest-logo { position: absolute; inset: 15%; }
+
+/* ---------- player photos ---------- */
+.pphoto { position: relative; overflow: hidden; }
+.pphoto > img, .pphoto > canvas { position: absolute; left: 0; top: 0; width: 100%; height: auto; display: block; }
+.pphoto > .ph-sil { position: absolute; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 4 / 5; }
+
+/* ---------- role glyph / flag ---------- */
+.role-ic { width: 1em; height: 1em; flex: none; display: block; }
+.flag {
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 700 17px/1 var(--f-ui); letter-spacing: .08em; color: rgba(255,255,255,.92);
+  padding: 4px 6px 3px; border-radius: 3px;
+  background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.32);
+}
+
+/* ---------- badges / scores ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: .45em; white-space: nowrap;
+  font: 800 22px/1 var(--f-ui); letter-spacing: .16em; padding: .38em .7em .34em; border-radius: 3px;
+}
+.badge-live { background: var(--accent); color: #fff; box-shadow: 0 0 24px rgba(var(--accent-rgb), .55); }
+.badge-live .dot { width: .52em; height: .52em; border-radius: 50%; background: #fff; animation: hll-pulse 1.1s ease-in-out infinite; }
+.badge-final { color: var(--accent2); background: rgba(var(--accent2-rgb), .10); box-shadow: inset 0 0 0 1.5px rgba(var(--accent2-rgb), .75); }
+@keyframes hll-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
+
+.score { display: flex; align-items: center; justify-content: center; font-family: var(--f-num); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.score .sc { color: #fff; }
+.score .sc.lose { color: rgba(255,255,255,.42); }
+.score .sc-sep { width: .32em; height: .08em; margin: 0 .22em; background: var(--accent2); border-radius: 2px; }
+
+/* ---------- tag chip ---------- */
+.tag {
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 900 26px/1 var(--f-display); letter-spacing: .06em; text-transform: uppercase;
+  color: #fff; background: var(--accent); padding: 6px 12px 5px; border-radius: 2px;
+}
+
+/* ---------- sponsor strip ---------- */
+.spons { display: flex; align-items: center; gap: 22px; height: 64px; }
+.spons-label { font: 700 16px/1 var(--f-ui); letter-spacing: .3em; text-transform: uppercase; color: rgba(var(--accent2-rgb), .9); white-space: nowrap; }
+.spons-logos { display: flex; align-items: center; gap: 26px; height: 100%; }
+.spons-item { height: 70%; width: 120px; display: flex; align-items: center; justify-content: center; }
+.spons-item.is-main { height: 88%; width: 150px; }
+.spons-item img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
+.spons-name { font: 800 22px/1 var(--f-display); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+
+/* ---------- error card (scene.html only) ---------- */
+.s-error { display: flex; align-items: center; justify-content: center; }
+.err-card { padding: 28px 40px; background: rgba(12,12,12,.9); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .7); max-width: 1100px; }
+.err-k { font: 700 18px/1 var(--f-ui); letter-spacing: .3em; text-transform: uppercase; color: var(--accent2); }
+.err-t { font: 900 54px/1.05 var(--f-display); text-transform: uppercase; margin: 10px 0 8px; }
+.err-m { font: 500 26px/1.3 var(--f-ui); color: rgba(255,255,255,.8); }
+
+/* ---------- dotted meta line ---------- */
+.dotted { display: flex; align-items: center; justify-content: center; gap: .55em; white-space: nowrap; }
+.dotted .sep { width: .3em; height: .3em; flex: none; background: var(--accent2); transform: rotate(45deg); opacity: .9; }
