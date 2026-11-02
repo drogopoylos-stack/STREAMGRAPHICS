@@ -27,14 +27,14 @@ function centreCell(m) {
   return h('div', { class: 'sc-mid' }, h('span', { class: 'sc-vs' }, 'VS'));
 }
 
-function row(m, i, lines) {
+function row(m, i, lines, showDates = false) {
   const nameProps = lines > 1 ? { 'data-lines': lines } : {};
   const live = m.status === 'live';
   const done = m.status === 'done';
   const aWin = done && Number(m.scoreA) > Number(m.scoreB);
   const bWin = done && Number(m.scoreB) > Number(m.scoreA);
   return h('div', { class: `srow ${live ? 'is-live' : ''} ${done ? 'is-done' : ''}`, in: 'left', d: 560 + i * 90, dur: 650 },
-    h('div', { class: 'sc-time' }, h('span', {}, m.time || 'TBA')),
+    h('div', { class: 'sc-time' }, h('span', {}, m.time || 'TBD'), showDates ? h('span', { class: 'sc-date-small' }, m.date ? `${m.date.slice(8, 10)}/${m.date.slice(5, 7)}` : 'Date TBD') : null),
     h('div', { class: `sc-team sc-a ${bWin ? 'is-lose' : ''}` },
       fit('sc-name display', m.teamA?.name || 'TBD', nameProps),
       teamLogo(m.teamA, 'sc-logo')),
@@ -56,19 +56,19 @@ export default {
     const rh = n ? Math.max(64, Math.min(176, Math.floor((avail - GAP * (n - 1)) / n))) : 0;
     const gap = n > 6 ? 10 : GAP;
 
-    return h('div', { class: `${n ? '' : 'is-empty'} ${n > 5 ? 'dense' : ''}`, style: { '--rh': `${rh}px`, '--gap': `${gap}px` } },
+    return h('div', { class: `${n ? '' : 'is-empty'} ${n > 5 ? 'dense' : ''} ${data.showDates ? 'has-dates' : ''}`, style: { '--rh': `${rh}px`, '--gap': `${gap}px` } },
       plate(data.theme, 'main', ctx),
       sceneHeader({
         league: data.league,
         kicker: leagueLine(data.league),
-        title: titleFor(data.date),
+        title: data.showDates ? 'Tournament Schedule' : titleFor(data.date),
         sub: data.dateLabel || '',
         subLang: 'el',
         right: spons,
       }),
       h('div', { class: 'sch-rule rule', in: 'wipec', d: 420, dur: 800 }),
       n
-        ? h('div', { class: `sch-rows n${n}` }, matches.map((m, i) => row(m, i, rh >= 150 ? 3 : rh >= 110 ? 2 : 1)))
+        ? h('div', { class: `sch-rows n${n}` }, matches.map((m, i) => row(m, i, rh >= 150 ? 3 : rh >= 110 ? 2 : 1, data.showDates)))
         : h('div', { class: 'sch-empty glass ticks', in: 'up', d: 520 },
           h('div', { class: 'sch-empty-k' }, 'Schedule'),
           h('div', { class: 'sch-empty-t display' }, 'No matches scheduled'),

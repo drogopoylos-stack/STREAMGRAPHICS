@@ -56,7 +56,7 @@ function dateHead(item) {
   const isToday = item.date === s.today;
   const isTomorrow = item.date === addDays(s.today, 1);
   return h(`div.date-head${isToday ? '.is-today' : ''}`, { role: 'heading', 'aria-level': 2, dataset: { date: item.date } },
-    h('span.date-label', fmtDate(item.date, 'long')),
+    h('span.date-label', item.date ? fmtDate(item.date, 'long') : 'Date TBD'),
     isToday ? badge(t('matches.todayBadge'), 'gold') : null,
     isTomorrow ? badge(t('matches.tomorrowBadge'), 'muted') : null,
     h('span.date-count', item.count ? String(item.count) : t('matches.noneToday')));
@@ -69,11 +69,11 @@ function row(m) {
   const winB = played && m.status === 'done' && (m.scoreB ?? 0) > (m.scoreA ?? 0);
   const el = h(`div.match-row.st-${m.status}`, { role: 'listitem', tabIndex: 0, dataset: { id: m.id }, 'aria-label': `${matchLabel(m, false)} ${m.time ?? ''}` },
     h('span.m-time', m.time || '—'),
-    h(`span.m-team.m-a${winA ? '.is-win' : ''}`, h('span.m-name', A?.name ?? t('common.tbd')), thumb(A?.logo ?? null, 'logo-md')),
+    h(`span.m-team.m-a${winA ? '.is-win' : ''}`, h('span.m-name', A?.name ?? m.teamALabel ?? t('common.tbd')), thumb(A?.logo ?? null, 'logo-md')),
     h('span.m-score', played ? h('span', h(`b${winA ? '.win' : ''}`, m.scoreA ?? 0), h('i', '–'), h(`b${winB ? '.win' : ''}`, m.scoreB ?? 0)) : h('span.m-vs', 'vs')),
-    h(`span.m-team.m-b${winB ? '.is-win' : ''}`, thumb(B?.logo ?? null, 'logo-md'), h('span.m-name', B?.name ?? t('common.tbd'))),
+    h(`span.m-team.m-b${winB ? '.is-win' : ''}`, thumb(B?.logo ?? null, 'logo-md'), h('span.m-name', B?.name ?? m.teamBLabel ?? t('common.tbd'))),
     h('span.m-stage', m.stage || ''),
-    h('span.m-bo', `BO${m.bestOf}`),
+    h('span.m-bo', m.bestOf ? `BO${m.bestOf}` : 'BO TBD'),
     h(`span.status-pill.st-${m.status}`, t(`status.${m.status}`)),
     h('span.m-stats', m.statsCount ? badge(t('matches.stats', { n: m.statsCount }), 'src', t('matches.statsTitle', { n: m.statsCount })) : null),
     h('span.m-links',
@@ -95,7 +95,7 @@ function render() {
   const byDate = new Map();
   for (const m of list) { if (!byDate.has(m.date)) byDate.set(m.date, []); byDate.get(m.date).push(m); }
   if (!byDate.has(s.today) && !filter.status && !filter.team) byDate.set(s.today, []);
-  const dates = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
+  const dates = [...byDate.keys()].sort((a, b) => a == null ? 1 : b == null ? -1 : b.localeCompare(a));
   const items = [];
   for (const d of dates) {
     const ms = byDate.get(d).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
@@ -126,13 +126,15 @@ export async function edit(matchId) {
   if (!isNew && !m) return;
   const s = store.state;
   const f = createForm();
-  const date = f.add('date', ctlText({ type: 'date', value: m?.date ?? s.today }));
+  const date = f.add('date', ctlText({ type: 'date', value: isNew ? s.today : m.date ?? '' }));
   const time = f.add('time', ctlText({ type: 'time', value: m?.time ?? '18:00' }));
-  const teamA = f.add('teamA', ctlSelect({ options: teamOptions(s, { none: t('common.tbd') }), value: m?.teamA ?? '' }));
-  const teamB = f.add('teamB', ctlSelect({ options: teamOptions(s, { none: t('common.tbd') }), value: m?.teamB ?? '' }));
+  const teamA = f.add('teamA', ctlSelect({ options: teamOptions(s, { none: m?.teamALabel || t('common.tbd') }), value: m?.teamA ?? '' }));
+  const teamB = f.add('teamB', ctlSelect({ options: teamOptions(s, { none: m?.teamBLabel || t('common.tbd') }), value: m?.teamB ?? '' }));
+  teamA.el.disabled = !!m?.teamASource;
+  teamB.el.disabled = !!m?.teamBSource;
   const stages = [...new Set(s.matches.map((x) => x.stage).filter(Boolean))];
   const stage = f.add('stage', ctlText({ value: m?.stage ?? '', list: 'stage-list', placeholder: t('matches.stageHint') }));
-  const bestOf = f.add('bestOf', ctlSegmented({ options: [1, 3, 5].map((n) => ({ value: n, label: `BO${n}` })), value: m?.bestOf ?? 1, size: 'sm' }));
+  const bestOf = f.add('bestOf', ctlSegmented({ options: [{ value: 0, label: 'TBD' }, ...[1, 3, 5].map((n) => ({ value: n, label: `BO${n}` }))], value: isNew ? 1 : m.bestOf ?? 0, size: 'sm' }));
   const status = f.add('status', ctlSegmented({ options: ['scheduled', 'live', 'done'].map((x) => ({ value: x, label: t(`status.${x}`) })), value: m?.status ?? 'scheduled', size: 'sm' }));
   const scoreA = f.add('scoreA', ctlNumber({ value: m?.scoreA ?? null, min: 0, max: 9, allowEmpty: true, placeholder: '–' }));
   const scoreB = f.add('scoreB', ctlNumber({ value: m?.scoreB ?? null, min: 0, max: 9, allowEmpty: true, placeholder: '–' }));
@@ -141,6 +143,7 @@ export async function edit(matchId) {
   f.snapshot();
 
   const swapBtn = h('button.btn.btn-icon.btn-ghost.swap-btn', { type: 'button', title: t('matches.swap'), 'aria-label': t('matches.swap') }, icon('swap', 16));
+  swapBtn.disabled = !!(m?.teamASource || m?.teamBSource);
   swapBtn.addEventListener('click', () => {
     const a = teamA.get(), b = teamB.get(), sa = scoreA.get(), sb = scoreB.get();
     teamA.set(b); teamB.set(a); scoreA.set(sa); scoreB.set(sb);
@@ -170,6 +173,8 @@ export async function edit(matchId) {
     const v = f.values();
     v.url = v.url || null;
     v.vod = v.vod || null;
+    v.date = v.date || null;
+    v.bestOf = Number(v.bestOf) || null;
     try {
       if (isNew) {
         const created = await api.post('/api/matches', v);
@@ -181,7 +186,7 @@ export async function edit(matchId) {
         edit(created.id);
       } else {
         const patch = f.changed();
-        for (const k of ['url', 'vod']) if (k in patch) patch[k] = v[k];
+        for (const k of ['url', 'vod', 'date', 'bestOf']) if (k in patch) patch[k] = v[k];
         await api.put(`/api/matches/${matchId}`, patch);
         f.snapshot();
         toast(t('common.saved'), 'ok');

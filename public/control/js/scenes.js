@@ -48,11 +48,12 @@ export function teamName(id, short = true) {
 
 export function matchLabel(m, short = true) {
   if (!m) return '';
-  return `${teamName(m.teamA, short)} ${t('scenes.vs')} ${teamName(m.teamB, short)}`;
+  return `${m.teamA ? teamName(m.teamA, short) : m.teamALabel || t('common.tbd')} ${t('scenes.vs')} ${m.teamB ? teamName(m.teamB, short) : m.teamBLabel || t('common.tbd')}`;
 }
 
 export function dayParamLabel(day) {
   const s = store.state;
+  if (day === 'all') return t('scenes.allDays');
   if (!day || day === 'today') return `${t('scenes.today')} · ${fmtDate(s?.today, 'short')}`;
   if (day === 'tomorrow') return `${t('scenes.tomorrow')} · ${fmtDate(s?.today ? addDays(s.today, 1) : '', 'short')}`;
   return fmtDate(day, 'short');
@@ -146,7 +147,7 @@ export function teamOptions(state = store.state, { none = null } = {}) {
 export function matchOptions(state = store.state, { auto = false, none = null } = {}) {
   const list = [...state.matches]
     .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
-    .map((m) => ({ value: m.id, label: `${m.time ?? ''}  ${matchLabel(m)}${m.stage ? ` · ${m.stage}` : ''}`, group: m.date === state.today ? `${fmtDate(m.date, 'short')} — ${t('scenes.today')}` : fmtDate(m.date, 'short') }));
+    .map((m) => ({ value: m.id, label: `${m.time ?? ''}  ${matchLabel(m)}${m.stage ? ` · ${m.stage}` : ''}`, group: m.date === state.today ? `${fmtDate(m.date, 'short')} — ${t('scenes.today')}` : m.date ? fmtDate(m.date, 'short') : 'Date TBD' }));
   const head = [];
   if (auto) head.push({ value: '', label: t('common.autoNext') });
   if (none) head.push({ value: '', label: none });

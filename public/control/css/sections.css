@@ -359,6 +359,50 @@ body:has(.page:not([hidden]) .save-bar:not([hidden])) .toasts { bottom: 92px; }
 .scene-card-actions { display: flex; align-items: center; gap: 5px; padding: 0 8px 9px; flex-wrap: wrap; }
 .scene-card-actions .btn { flex: 1; }
 .scene-card { text-align: left; }
+
+/* Graphic type menu stays reachable while browsing a large tournament. */
+.graphics-dashboard { --graphics-menu-h: 150px; min-width: 0; }
+.graphic-menu { position: sticky; top: 0; z-index: 8; padding: 14px 0; margin-bottom: 18px; display: flex; flex-direction: column; gap: 12px; background: var(--bg-0); border-bottom: 1px solid var(--line-2); box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+.graphic-menu .dashboard-toolbar .panel-title { margin-right: 0; }
+.graphic-count { color: var(--text-3); font-size: 12px; margin-right: auto; white-space: nowrap; }
+.graphic-types { display: flex; flex-wrap: wrap; gap: 6px; }
+.graphic-filter { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-1); color: var(--text-2); font-size: 13px; font-weight: 600; }
+.graphic-filter:hover { color: var(--text); border-color: var(--line-2); }
+.graphic-types .graphic-filter[aria-pressed='true'] { background: var(--gold-lo); border-color: var(--gold); color: var(--gold); }
+.graphic-filter-count { min-width: 19px; padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,.06); font-size: 11px; font-variant-numeric: tabular-nums; }
+.graphic-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.graphic-periods { display: flex; flex-wrap: wrap; gap: 4px; }
+.graphic-periods .graphic-filter { min-height: 29px; padding: 4px 9px; font-size: 12px; border-color: transparent; background: transparent; }
+.graphic-periods .graphic-filter[aria-pressed='true'] { color: var(--text); border-color: var(--line-2); background: var(--bg-3); }
+.graphic-date-label { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--text-3); font-size: 12px; }
+.graphic-date.input { width: 148px; height: 30px; padding: 3px 7px; }
+.graphic-menu button[aria-pressed='true'].btn { color: var(--gold); border-color: var(--gold); }
+.graphics-dashboard .live-side { top: calc(var(--graphics-menu-h) + 16px); }
+.graphic-section { border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-1); }
+.graphic-section > summary { display: flex; align-items: center; gap: 10px; padding: 13px 14px; cursor: pointer; list-style: none; color: var(--text-2); }
+.graphic-section > summary::-webkit-details-marker { display: none; }
+.graphic-section > summary::before { content: '›'; font-size: 20px; line-height: 14px; transition: transform .12s; }
+.graphic-section[open] > summary::before { transform: rotate(90deg); }
+.graphic-section[data-period='today'] > summary { color: var(--gold); }
+.graphic-section[data-period='live'] > summary { color: #ff657d; }
+.graphic-section[data-period='completed'] > summary { color: #72c4a1; }
+.graphic-section-count { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,.06); font: 500 12px/1 var(--font); letter-spacing: 0; }
+.graphic-section-body { padding: 0 12px 12px; }
+.graphic-more { display: block; margin: 14px auto 0; }
+.card-context { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; font-size: 10px; font-weight: 600; line-height: 1.2; text-transform: uppercase; letter-spacing: .04em; }
+.graphic-state { color: var(--text-3); }
+.graphic-state.is-live { color: #ff657d; }
+.graphic-state.is-today { color: var(--gold); }
+.graphic-state.is-upcoming { color: #8bbaec; }
+.graphic-state.is-completed { color: #72c4a1; }
+.card-saved { color: var(--gold); }
+.card-day { margin-left: auto; color: var(--text-2); white-space: nowrap; text-transform: none; letter-spacing: 0; }
+@media (max-width: 1000px) {
+  .graphic-types { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 3px; }
+  .graphic-types .graphic-filter { flex: none; }
+  .graphic-date-label { margin-left: 0; }
+  .graphics-dashboard .live-side { position: static; }
+}
 .builder-panel > .field { margin: 14px 0 9px; }
 @media (max-width: 1200px) { .master-panel { grid-template-columns: 1fr; gap: 12px; } }
 .export-preview { position: relative; width: 100%; max-width: 720px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-2); margin: 16px auto; }

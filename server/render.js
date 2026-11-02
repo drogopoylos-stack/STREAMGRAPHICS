@@ -6,6 +6,7 @@ import puppeteer from 'puppeteer-core';
 import * as store from './db.js';
 import { dimensionsFor } from '../public/shared/scenes.js';
 import { sceneData } from './scenes.js';
+import { graphicCatalog } from './graphics.js';
 
 const CANDIDATES = [
   process.env.HLL_BROWSER,
@@ -70,7 +71,7 @@ export async function renderScene(scene, params = {}, name) {
 /** The standard set: schedules, next match, every roster, every feature. */
 export async function renderAll(job, nextMatchId) {
   const db = store.get();
-  const list = [
+  let list = [
     ['schedule', { day: 'today' }, 'schedule-today'],
     ['schedule', { day: 'tomorrow' }, 'schedule-tomorrow'],
   ];
@@ -80,6 +81,12 @@ export async function renderAll(job, nextMatchId) {
   for (const t of db.teams.filter((x) => !x.hidden)) list.push(['roster', { team: t.id }, `roster-${t.tag || t.id}`]);
   for (const f of db.features) list.push(['matchup', { feature: f.id }, `matchup-${f.id}`]);
   if (db.sponsors.some((s) => s.logo)) list.push(['sponsors', {}, 'sponsors']);
+  if (db.settings.enabledScenes?.length) {
+    list = graphicCatalog(db).filter(card => card.ready && !card.savedId)
+      .filter(card => !['versus', 'simple-vs', 'social-versus'].includes(card.scene) || card.params.match)
+      .filter(card => !['schedule', 'social-schedule'].includes(card.scene) || sceneData(card.scene, card.params, db).matches.length)
+      .map(card => [card.scene, card.params, card.scene === 'simple-vs' ? `vs-${db.matches.find(m => m.id === card.params.match)?.bracketCode || card.params.match}` : card.title]);
+  }
   const out = [];
   let i = 0;
   for (const [scene, params, name] of list) {

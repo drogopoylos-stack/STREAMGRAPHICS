@@ -16,6 +16,7 @@ import { refreshDdragon } from './ddragon.js';
 import { executable as photocraftExecutable } from './photocraft.js';
 import { graphicCatalog, newGraphic } from './graphics.js';
 import { saveBackground } from './backgrounds.js';
+import { resolvedTournament, validateSources, syncBracket } from './bracket.js';
 
 const PORT = Number(process.env.PORT) || 4610;
 store.load();
@@ -72,7 +73,7 @@ const wrap = (fn) => async (req, res) => {
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
 function publicState() {
-  const d = store.get();
+  const d = resolvedTournament(store.get());
   return {
     activeTournamentId: store.activeId(), tournaments: store.tournaments(),
     capabilities: { photocraft: photocraftStatus() },
@@ -128,6 +129,7 @@ app.put('/api/settings', wrap((req) => {
   const body = req.body ?? {};
   if (body.photo?.engine !== undefined && !['standard', 'photocraft'].includes(body.photo.engine)) throw fail(400, 'Unknown photo processor');
   if (body.photo?.engine === 'photocraft' && !photocraftStatus().available) throw fail(400, 'PhotoCraft is not installed on this PC.');
+  if (body.enabledScenes !== undefined && (!Array.isArray(body.enabledScenes) || body.enabledScenes.some(scene => !SCENES.includes(scene)))) throw fail(400, 'Unknown enabled screen');
   deepMerge(d.settings, body);
   if (Array.isArray(body.statDefs)) d.settings.statDefs = body.statDefs;
   store.changed();
@@ -153,7 +155,9 @@ const clean = (body) => {
 for (const coll of Object.keys(PREFIX)) {
   app.post(`/api/${coll}`, wrap((req) => {
     const item = { id: newId(PREFIX[coll]), ...DEFAULTS[coll](), ...clean(req.body) };
+    if (coll === 'matches') validateSources([...store.get().matches, item]);
     store.get()[coll].push(item);
+    if (coll === 'matches') syncBracket(store.get());
     store.changed();
     return item;
   }));
@@ -161,8 +165,10 @@ for (const coll of Object.keys(PREFIX)) {
     const item = store.get()[coll].find((x) => x.id === req.params.id);
     if (!item) throw fail(404, 'not found');
     const body = clean(req.body);
+    if (coll === 'matches') validateSources(store.get().matches.map(match => match.id === item.id ? { ...match, ...body } : match));
     if (coll === 'teams' && body.colors) body.colorsManual = true;
     Object.assign(item, body);
+    if (coll === 'matches') syncBracket(store.get());
     store.changed();
     return item;
   }));
@@ -170,6 +176,7 @@ for (const coll of Object.keys(PREFIX)) {
     const list = store.get()[coll];
     const i = list.findIndex((x) => x.id === req.params.id);
     if (i < 0) throw fail(404, 'not found');
+    if (coll === 'matches' && (list.some(m => m.teamASource?.matchId === req.params.id || m.teamBSource?.matchId === req.params.id) || store.get().settings.bracketTree?.rounds?.some(round => round.matches?.includes(req.params.id)))) throw fail(409, 'Remove this match from the bracket and its winner sources before deleting it');
     list.splice(i, 1);
     if (coll === 'teams') for (const p of store.get().players) if (p.teamId === req.params.id) p.teamId = null;
     store.changed();

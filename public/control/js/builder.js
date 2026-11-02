@@ -8,10 +8,11 @@ import { isPortrait } from '../../shared/scenes.js';
 
 export function sceneBuilder({ onChange } = {}) {
   const state = store.state;
-  const scene = ctlSelect({ options: SCENES.map((s) => ({ value: s, label: sceneName(s) })), value: 'versus' });
+  const allowedScenes = st => SCENES.filter(s => !st.settings.enabledScenes?.length || st.settings.enabledScenes.includes(s)).map(s => ({ value: s, label: sceneName(s) }));
+  const scene = ctlSelect({ options: allowedScenes(state), value: allowedScenes(state).find(s => s.value === 'versus')?.value || allowedScenes(state)[0]?.value });
   const team = ctlSelect({ options: teamOptions(state) });
   const match = ctlSelect({ options: matchOptions(state, { auto: true }) });
-  const day = ctlSegmented({ options: [{ value: 'today', label: t('scenes.today') }, { value: 'tomorrow', label: t('scenes.tomorrow') }, { value: 'date', label: t('live.date') }], value: 'today', size: 'sm' });
+  const day = ctlSegmented({ options: [{ value: 'today', label: t('scenes.today') }, { value: 'tomorrow', label: t('scenes.tomorrow') }, { value: 'date', label: t('live.date') }, { value: 'all', label: t('scenes.allDays') }], value: 'today', size: 'sm' });
   const date = ctlText({ type: 'date', value: state.today });
   const src = ctlSegmented({ options: [{ value: 'feature', label: t('live.sourceFeature') }, { value: 'players', label: t('live.sourcePlayers') }], value: state.features.length ? 'feature' : 'players', size: 'sm' });
   const feature = ctlSelect({ options: featureOpts(state) });
@@ -60,7 +61,7 @@ export function sceneBuilder({ onChange } = {}) {
     fPA.hidden = fPB.hidden = s !== 'social-versus' && (s !== 'matchup' || src.get() !== 'players');
     fMode.hidden = isPortrait(s);
     fEffect.hidden = s !== 'social-versus';
-    fPage.hidden = s !== 'social-schedule';
+    fPage.hidden = s !== 'social-schedule' && !(s === 'schedule' && day.get() === 'all');
     refreshPlayers(store.state);
   }
 
@@ -70,7 +71,7 @@ export function sceneBuilder({ onChange } = {}) {
     if (s === 'roster') params.team = team.get();
     if (['versus', 'simple-vs', 'social-versus'].includes(s)) params.match = match.get();
     if (s === 'schedule' || s === 'social-schedule') params.day = day.get() === 'date' ? (date.get() || state.today) : day.get();
-    if (s === 'social-schedule' && page.get() > 1) params.page = page.get();
+    if ((s === 'social-schedule' || day.get() === 'all') && page.get() > 1) params.page = page.get();
     if (s === 'social-versus') { params.playerA = pa.get(); params.playerB = pb.get(); params.effect = effect.get(); }
     if (s === 'matchup') {
       if (src.get() === 'feature') params.feature = feature.get();
@@ -89,7 +90,7 @@ export function sceneBuilder({ onChange } = {}) {
     if (p.team) team.set(p.team);
     if (['versus', 'simple-vs', 'social-versus'].includes(cue.scene)) match.set(p.match ?? '');
     if (cue.scene === 'schedule' || cue.scene === 'social-schedule') {
-      if (!p.day || p.day === 'today' || p.day === 'tomorrow') day.set(p.day ?? 'today');
+      if (!p.day || ['today', 'tomorrow', 'all'].includes(p.day)) day.set(p.day ?? 'today');
       else { day.set('date'); date.set(p.day); }
     }
     if (cue.scene === 'social-versus') { pa.set(p.playerA ?? null); pb.set(p.playerB ?? null); effect.set(p.effect ?? 'halftone'); }
@@ -104,6 +105,7 @@ export function sceneBuilder({ onChange } = {}) {
   }
 
   function refresh(st) {
+    scene.setOptions(allowedScenes(st));
     team.setOptions(teamOptions(st));
     match.setOptions(matchOptions(st, { auto: true }));
     feature.setOptions(featureOpts(st));
@@ -111,6 +113,7 @@ export function sceneBuilder({ onChange } = {}) {
     pb.setOptions(playerComboOptions(st));
     background.setOptions(backgroundOpts(st));
     refreshPlayers(st);
+    layout();
   }
 
   const emit = () => { layout(); onChange?.(get()); };

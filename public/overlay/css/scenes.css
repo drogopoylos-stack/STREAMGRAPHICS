@@ -436,3 +436,22 @@
 .sp-empty-t { font-size: 96px; }
 .sp-empty-s { font: 700 24px/1 var(--f-ui); letter-spacing: .3em; text-transform: uppercase; color: var(--accent2); margin-right: -.3em; }
 .sp-empty-g { font: italic 600 36px/1.1 var(--f-serif); color: rgba(255,255,255,.82); }
+.native-bracket { position: absolute; left: 104px; top: 290px; width: 1712px; height: 650px; }
+.nb-lines { position: absolute; inset: 0; color: rgba(var(--accent2-rgb),.62); }
+.nb-round { position: absolute; top: 0; height: 40px; display: flex; gap: 12px; align-items: center; color: var(--accent2); font: 700 21px/1 var(--f-display); letter-spacing: .07em; text-transform: uppercase; }
+.nb-round > span { color: rgba(var(--accent2-rgb),.45); font: 500 16px/1 var(--f-num); }
+.nb-round-name { flex: 1; }
+.nb-match { position: absolute; height: 118px; padding: 7px 12px; border: 1px solid rgba(var(--accent2-rgb),.4); border-left: 3px solid var(--accent2); border-radius: 3px; background: linear-gradient(120deg,rgba(12,20,34,.97),rgba(6,10,19,.95)); box-shadow: 0 8px 26px rgba(0,0,0,.3); }
+.nb-match.is-live { border-color: var(--accent); }
+.nb-meta { display: flex; justify-content: space-between; gap: 8px; height: 26px; color: rgba(255,255,255,.55); font: 400 14px/1.1 var(--f-ui); }
+.nb-meta strong { color: var(--accent2); font-weight: 700; white-space: nowrap; }
+.nb-team { height: 36px; display: flex; align-items: center; gap: 8px; }
+.nb-team + .nb-team { border-top: 1px solid rgba(255,255,255,.07); }
+.nb-logo { width: 30px; height: 30px; flex: none; }
+.nb-name { flex: 1; min-width: 0; font: 600 24px/1 var(--f-display); }
+.nb-score { flex: none; width: 21px; text-align: center; font: 600 23px/1 var(--f-num); color: rgba(255,255,255,.4); }
+.nb-team.is-winner .nb-name,.nb-team.is-winner .nb-score { color: var(--accent2); }
+.nb-footer { position: absolute; left: 104px; right: 104px; top: 970px; display: flex; justify-content: space-between; border-top: 1px solid rgba(var(--accent2-rgb),.3); padding-top: 15px; color: var(--accent2); font: 600 18px/1 var(--f-ui); letter-spacing: .12em; }
+.nb-footer span { color: rgba(255,255,255,.4); font-size: 14px; letter-spacing: .04em; }
+.sc-date-small { display: block; margin-top: 6px; font: 500 17px/1 var(--f-ui); color: var(--accent2); }
+.has-dates .sc-time { flex-direction: column; }

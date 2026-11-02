@@ -48,7 +48,7 @@ export function sponsorsFor(data, opts) {
 
 /** "BO5", "Σάββατο 12 Σεπτεμβρίου", "18:00" — the non-empty bits of a match's when-line. */
 export function whenBits(m, dateOpts) {
-  return [boText(m?.bestOf), dayLabel(m?.date, dateOpts), m?.time || ''].filter(Boolean);
+  return [boText(m?.bestOf), m?.date ? dayLabel(m.date, dateOpts) : 'Date TBD', m?.time || 'Time TBD'].filter(Boolean);
 }
 
 /** Inline list with gold diamond separators. */

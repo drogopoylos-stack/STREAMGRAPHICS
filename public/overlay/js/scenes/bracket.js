@@ -3,6 +3,7 @@
 // Static renders wait for the embed's load event (max 4 s) before marking ready.
 import { h, plate, laurel } from '../ui.js';
 import { sceneHeader, sponsorsFor, leagueLine } from './common.js';
+import nativeBracket from './native-bracket.js';
 
 const EMBED_WAIT = 4000;
 
@@ -93,6 +94,7 @@ function ghost(data) {
 
 export default {
   render(data, ctx) {
+    if (data.tree?.rounds?.length) return nativeBracket.render(data, ctx);
     const embed = data.embed || { type: 'none' };
     const hasEmbed = (embed.type === 'iframe' || embed.type === 'url') ? !!embed.src : embed.type === 'html' && !!embed.html;
     const spons = sponsorsFor(data, { label: 'Partners', max: 4, cls: 'brk-spons' });

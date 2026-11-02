@@ -3,6 +3,7 @@ import { aggregatePlayer, compareRows, teamRecord, formatStat, headToHead } from
 import { isoDay, dayLabel } from './util.js';
 import { championIcon } from './ddragon.js';
 import { SCENE_IDS } from '../public/shared/scenes.js';
+import { resolvedTournament, matchTeam, bracketTree } from './bracket.js';
 
 export const SCENES = SCENE_IDS;
 const ROLE_ORDER = ['Top', 'Jungle', 'Mid', 'Bot', 'Support', 'Coach', ''];
@@ -99,6 +100,7 @@ function parseEmbed(raw) {
 
 /** Data for one scene, ready to draw. Throws Error with .status 404 for a bad id. */
 export function sceneData(scene, params = {}, db = store.get()) {
+  db = resolvedTournament(db);
   const base = common(db, scene, params);
   const notFound = (what) => Object.assign(new Error(`${what} not found`), { status: 404 });
 
@@ -115,7 +117,7 @@ export function sceneData(scene, params = {}, db = store.get()) {
       if (params.match && !byId(db.matches, params.match)) throw notFound('match');
       const match = byId(db.matches, params.match) ?? nextMatch(db);
       if (!match) throw notFound('match');
-      const teamA = byId(db.teams, match.teamA), teamB = byId(db.teams, match.teamB);
+      const teamA = matchTeam(db, match, 'A'), teamB = matchTeam(db, match, 'B');
       const out = { ...base, match: stripStats(match), teamA, teamB };
       if (scene === 'social-versus') {
         const choose = (team, requested) => {
@@ -128,7 +130,7 @@ export function sceneData(scene, params = {}, db = store.get()) {
           }
           return players.find(p => p.captain && p.photo) ?? players.find(p => p.photo) ?? players[0] ?? null;
         };
-        return { ...out, dateLabel: dayLabel(match.date), playerA: choose(teamA, params.playerA), playerB: choose(teamB, params.playerB), effect: ['none', 'prism', 'halftone'].includes(params.effect) ? params.effect : 'halftone' };
+        return { ...out, dateLabel: match.date ? dayLabel(match.date) : 'Date TBD', playerA: choose(teamA, params.playerA), playerB: choose(teamB, params.playerB), effect: ['none', 'prism', 'halftone'].includes(params.effect) ? params.effect : 'halftone' };
       }
       if (scene === 'versus') {
         Object.assign(out, {
@@ -143,14 +145,19 @@ export function sceneData(scene, params = {}, db = store.get()) {
     case 'schedule':
     case 'social-schedule': {
       const date = resolveDay(params.day, db.settings.timezone);
-      const matches = db.matches
-        .filter((m) => m.date === date)
-        .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
-        .map((m) => ({ ...stripStats(m), teamA: byId(db.teams, m.teamA), teamB: byId(db.teams, m.teamB) }));
+      let matches = db.matches
+        .filter((m) => params.day === 'all' || m.date === date)
+        .sort((a, b) => `${a.date || '9999'} ${a.time ?? ''}`.localeCompare(`${b.date || '9999'} ${b.time ?? ''}`))
+        .map((m) => ({ ...stripStats(m), teamA: matchTeam(db, m, 'A'), teamB: matchTeam(db, m, 'B') }));
+      if (params.day === 'all' && scene === 'schedule') {
+        const pages = Math.max(1, Math.ceil(matches.length / 8));
+        const page = Math.min(pages, Math.max(1, Math.floor(Number(params.page) || 1)));
+        return { ...base, date: null, dateLabel: `${db.settings.timezone} · ${pages > 1 ? `Page ${page}/${pages}` : 'Full tournament schedule'}`, showDates: true, matches: matches.slice((page - 1) * 8, page * 8), pagination: { page, pages, total: matches.length } };
+      }
       if (scene === 'social-schedule') {
         const pages = Math.max(1, Math.ceil(matches.length / 6));
         const page = Math.min(pages, Math.max(1, Math.floor(Number(params.page) || 1)));
-        return { ...base, date, dateLabel: dayLabel(date), matches: matches.slice((page - 1) * 6, page * 6), pagination: { page, pages, total: matches.length } };
+        return { ...base, date: params.day === 'all' ? null : date, dateLabel: params.day === 'all' ? 'Full tournament schedule' : dayLabel(date), matches: matches.slice((page - 1) * 6, page * 6), pagination: { page, pages, total: matches.length } };
       }
       return { ...base, date, dateLabel: dayLabel(date), matches };
     }
@@ -176,7 +183,7 @@ export function sceneData(scene, params = {}, db = store.get()) {
       };
     }
     case 'bracket':
-      return { ...base, embed: parseEmbed(db.settings.bracketEmbed) };
+      return { ...base, embed: parseEmbed(db.settings.bracketEmbed), tree: bracketTree(db) };
     case 'sponsors':
       return { ...base, sponsors: db.sponsors.filter((x) => x.logo) };
     default:
@@ -195,7 +202,7 @@ export function nextMatch(db = store.get()) {
   if (live) return live;
   const key = (m) => `${m.date} ${m.time ?? ''}`;
   const now = `${isoDay(0, db.settings.timezone)} 00:00`;
-  const upcoming = db.matches.filter((m) => m.status === 'scheduled' && key(m) >= now).sort((a, b) => key(a).localeCompare(key(b)));
+  const upcoming = db.matches.filter((m) => m.date && m.status === 'scheduled' && key(m) >= now).sort((a, b) => key(a).localeCompare(key(b)));
   if (upcoming.length) return upcoming[0];
-  return [...db.matches].sort((a, b) => key(b).localeCompare(key(a)))[0] ?? null;
+  return [...db.matches].filter(m => m.date).sort((a, b) => key(b).localeCompare(key(a)))[0] ?? db.matches[0] ?? null;
 }

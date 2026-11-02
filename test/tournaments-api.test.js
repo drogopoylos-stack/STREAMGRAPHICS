@@ -165,6 +165,26 @@ test('tournament HTTP workflow preserves HLL and isolates the second tournament'
     assert.equal((await request('/api/graphics', 'POST', { name: 'Unknown', scene: 'no-such-scene' })).status, 400);
   });
 
+  await t.test('bracket scores propagate through HTTP and invalid edits leave fixtures unchanged', async () => {
+    const teams = [];
+    for (const tag of ['A', 'B', 'C']) teams.push((await request('/api/teams', 'POST', { name: tag, tag })).data);
+    const opening = (await request('/api/matches', 'POST', { teamA: teams[0].id, teamB: teams[1].id, bestOf: 3, bracketCode: '1-1' })).data;
+    const final = (await request('/api/matches', 'POST', { teamA: teams[2].id, teamBSource: { matchId: opening.id, outcome: 'winner' }, date: null, time: '', bestOf: null })).data;
+    assert.equal((await request('/api/matches', 'POST', { teamASource: { matchId: 'foreign', outcome: 'winner' } })).status, 400);
+    assert.equal((await request(`/api/matches/${opening.id}`, 'PUT', { teamASource: { matchId: final.id, outcome: 'winner' } })).status, 400);
+    assert.equal((await request(`/api/matches/${opening.id}`, 'DELETE')).status, 409);
+    assert.equal((await request(`/api/matches/${opening.id}`, 'PUT', { status: 'done', scoreA: 2, scoreB: 0 })).status, 200);
+    const state = (await request('/api/state')).data;
+    assert.equal(state.matches.find(m => m.id === final.id).teamB, teams[0].id);
+    assert.equal(state.matches.find(m => m.id === final.id).teamBLabel, 'Winner 1-1');
+    await request(`/api/matches/${final.id}`, 'PUT', { status: 'done', bestOf: 3, scoreA: 2, scoreB: 0 });
+    await request(`/api/matches/${opening.id}`, 'PUT', { scoreA: 0, scoreB: 2 });
+    const updated = (await request('/api/state')).data.matches.find(m => m.id === final.id);
+    assert.equal(updated.teamB, teams[1].id);
+    assert.equal(updated.scoreA, null);
+    assert.equal(updated.status, 'scheduled');
+  });
+
   await t.test('returning to HLL restores its original roster, settings, logo and exports', async () => {
     assert.equal((await request('/api/tournaments/tr_hll/activate', 'POST')).status, 200);
     const state = (await request('/api/state')).data;

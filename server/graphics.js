@@ -1,13 +1,15 @@
 import { SCENE_DEFINITIONS, dimensionsFor } from '../public/shared/scenes.js';
 import { sceneData, nextMatch } from './scenes.js';
 import { isoDay, newId } from './util.js';
+import { resolvedTournament, matchTeam } from './bracket.js';
 
 const clean = params => Object.fromEntries(Object.entries(params ?? {}).filter(([, value]) => value != null && value !== '').map(([key, value]) => [key, String(value)]));
 const teamById = (db, id) => db.teams.find(team => team.id === id);
-const matchTitle = (db, match) => `${teamById(db, match?.teamA)?.tag ?? 'TBD'} vs ${teamById(db, match?.teamB)?.tag ?? 'TBD'}`;
+const matchTitle = (db, match) => `${matchTeam(db, match, 'A')?.tag ?? 'TBD'} vs ${matchTeam(db, match, 'B')?.tag ?? 'TBD'}`;
 
 /** Every registered scene becomes a dashboard card; new scene types inherit this expansion. */
 export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
+  db = resolvedTournament(db);
   const cards = [];
   const tomorrowDate = new Date(`${today}T12:00:00Z`);
   tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
@@ -16,24 +18,26 @@ export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
     let ready = true, reason = '';
     try {
       const data = sceneData(definition.id, params, db);
-      if (definition.id === 'bracket' && data.embed.type === 'none') { ready = false; reason = 'Add a bracket in Settings'; }
+      if (definition.id === 'bracket' && data.embed.type === 'none' && !data.tree?.rounds.length) { ready = false; reason = 'Add a bracket in Settings'; }
       if (definition.id === 'sponsors' && !data.sponsors.length) { ready = false; reason = 'Add a sponsor logo'; }
       if (definition.target === 'match' && (!data.teamA || !data.teamB)) { ready = false; reason = 'Choose both teams for this match'; }
     } catch (error) { ready = false; reason = error.message; }
     cards.push({ key: `${definition.id}:${suffix}`, scene: definition.id, params: clean(params), title, sub: reason || sub, group: definition.group, art: art ?? { type: 'icon', icon: 'layers' }, ...dimensionsFor(definition.id), ready, warn: !ready, ...extra });
   };
   for (const definition of SCENE_DEFINITIONS) {
+    if (db.settings.enabledScenes?.length && !db.settings.enabledScenes.includes(definition.id)) continue;
     switch (definition.target) {
       case 'day': {
         const dates = [...new Set(db.matches.map(match => match.date).filter(Boolean))].sort();
         const nextDay = dates.find(day => day > today);
         const targets = [['today', today, 'Today'], ['tomorrow', tomorrow, 'Tomorrow']];
+        if (db.settings.scheduleOverview && definition.id === 'schedule') targets.unshift(['all', null, 'Full tournament']);
         if (nextDay && nextDay !== tomorrow) targets.push([nextDay, nextDay, 'Next match day']);
         for (const day of dates) if (day !== today && day !== tomorrow && day !== nextDay) targets.push([day, day, day]);
         for (const [day, date, label] of targets) {
-          const count = db.matches.filter(match => match.date === date).length;
-          const pages = definition.id === 'social-schedule' ? Math.max(1, Math.ceil(count / 6)) : 1;
-          for (let page = 1; page <= pages; page++) add(definition, `${day}:${page}`, { day, ...(pages > 1 ? { page } : {}) }, `${definition.label} · ${label}${pages > 1 ? ` · ${page}/${pages}` : ''}`, `${date} · ${count} matches`, { type: 'icon', icon: 'calendar' });
+          const count = db.matches.filter(match => day === 'all' || match.date === date).length;
+          const pages = definition.id === 'social-schedule' ? Math.max(1, Math.ceil(count / 6)) : day === 'all' ? Math.max(1, Math.ceil(count / 8)) : 1;
+          for (let page = 1; page <= pages; page++) add(definition, `${day}:${page}`, { day, ...(pages > 1 ? { page } : {}) }, `${definition.label} · ${label}${pages > 1 ? ` · ${page}/${pages}` : ''}`, `${date || 'All match days'} · ${count} matches`, { type: 'icon', icon: 'calendar' });
         }
         break;
       }
@@ -41,7 +45,7 @@ export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
         const next = nextMatch(db);
         if (next) add(definition, 'next', {}, `Next match · ${definition.label}`, matchTitle(db, next), { type: 'logos', teams: [teamById(db, next.teamA), teamById(db, next.teamB)] });
         for (const match of [...db.matches].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))) {
-          add(definition, match.id, { match: match.id }, `${definition.label} · ${matchTitle(db, match)}`, `${match.date} · ${match.time || 'TBA'}`, { type: 'logos', teams: [teamById(db, match.teamA), teamById(db, match.teamB)] });
+          add(definition, match.id, { match: match.id }, `${definition.label} · ${matchTitle(db, match)}`, `${match.date || 'Date TBD'} · ${match.time || 'Time TBD'}`, { type: 'logos', teams: [matchTeam(db, match, 'A'), matchTeam(db, match, 'B')] });
         }
         break;
       }
@@ -58,6 +62,7 @@ export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
   for (const graphic of db.graphics ?? []) {
     const definition = SCENE_DEFINITIONS.find(scene => scene.id === graphic.scene);
     if (!definition) continue;
+    if (db.settings.enabledScenes?.length && !db.settings.enabledScenes.includes(definition.id)) continue;
     add(definition, `saved:${graphic.id}`, graphic.params, graphic.name, definition.label, null, { group: 'saved', savedId: graphic.id });
   }
   return cards;
