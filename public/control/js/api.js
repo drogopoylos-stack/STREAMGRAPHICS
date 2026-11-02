@@ -10,6 +10,7 @@ export class ApiError extends Error {
 
 async function request(method, url, body) {
   const opts = { method, headers: {} };
+  if (method !== 'GET' && api.tournamentId) opts.headers['X-Tournament-Id'] = api.tournamentId;
   if (body instanceof FormData) opts.body = body;
   else if (body !== undefined) {
     opts.headers['content-type'] = 'application/json';
@@ -32,6 +33,7 @@ async function request(method, url, body) {
 }
 
 export const api = {
+  tournamentId: null,
   get: (url) => request('GET', url),
   post: (url, body = {}) => request('POST', url, body),
   put: (url, body = {}) => request('PUT', url, body),
@@ -52,5 +54,10 @@ export const api = {
     fd.append('slot', slot);
     fd.append('file', file, file.name);
     return request('POST', '/api/brand/upload', fd);
+  },
+  backgroundUpload(file) {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return request('POST', '/api/backgrounds', body);
   },
 };

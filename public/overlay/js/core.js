@@ -22,12 +22,14 @@ export function readFlags(search = location.search) {
 }
 
 /** Fixed 1920×1080 stage, scaled (letterboxed) to the window when the window is another size. */
-export function mountStage() {
+export function mountStage({ width = W, height = H } = {}) {
   const stage = document.getElementById('stage');
+  stage.style.width = `${width}px`;
+  stage.style.height = `${height}px`;
   const fit = () => {
-    const s = Math.min(innerWidth / W, innerHeight / H) || 1;
-    const x = (innerWidth - W * s) / 2;
-    const y = (innerHeight - H * s) / 2;
+    const s = Math.min(innerWidth / width, innerHeight / height) || 1;
+    const x = (innerWidth - width * s) / 2;
+    const y = (innerHeight - height * s) / 2;
     stage.style.transform = Math.abs(s - 1) < 1e-4 && Math.abs(x) < 0.5 && Math.abs(y) < 0.5
       ? '' : `translate(${x}px, ${y}px) scale(${s})`;
   };
@@ -112,9 +114,10 @@ export function themeVars(theme = {}) {
 
 /** Background plate URL. kind = main | versus | stage. theme.bgImage overrides the main plate. */
 export function plateUrl(theme = {}, kind = 'main') {
-  if (kind === 'main' && theme.bgImage) return theme.bgImage;
+  const custom = kind === 'social' ? theme.socialBgImage || theme.bgImage : kind === 'versus' ? theme.versusBgImage || theme.bgImage : theme.bgImage;
+  if (custom) return custom;
   const preset = theme.preset === 'aegean' ? 'aegean' : (theme.preset || 'sparta');
-  return `/brand/${preset}-${kind}.jpg`;
+  return `/brand/${preset}-${kind === 'social' ? 'main' : kind}.jpg`;
 }
 
 // ---------- fonts / fit / readiness ----------

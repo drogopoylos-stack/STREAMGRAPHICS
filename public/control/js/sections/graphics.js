@@ -7,7 +7,9 @@ import { store } from '../store.js';
 import { trackJob, latestJob, onAnyJob, getJob } from '../jobs.js';
 import { toast, toastError, busy, btn, sectionHead, panel, field, ctlText, copyField, jobView, imgBox, emptyState, badge } from '../ui.js';
 import { sceneBuilder } from '../builder.js';
-import { cueText } from '../scenes.js';
+import { cueText, sceneUrl } from '../scenes.js';
+import { backgroundPanel } from '../background-panel.js';
+import { dimensionsFor, isPortrait } from '../../../shared/scenes.js';
 
 export const id = 'graphics';
 let els = null;
@@ -38,11 +40,32 @@ export function mount(root) {
   }));
   const allPanel = panel(t('graphics.renderAll'), h('p.panel-sub', t('graphics.renderAllSub')), h('div.panel-actions', allBtn), jobHost);
 
-  const builder = sceneBuilder();
+  const previewFrame = h('iframe.export-preview-frame', { title: t('graphics.preview'), scrolling: 'no' });
+  const preview = h('div.export-preview.checker', previewFrame);
+  let previewSize = { width: 1920, height: 1080 };
+  const fitPreview = () => preview.style.setProperty('--preview-scale', String(preview.clientWidth / previewSize.width));
+  const paintPreview = cue => {
+    previewSize = dimensionsFor(cue.scene);
+    preview.style.aspectRatio = `${previewSize.width} / ${previewSize.height}`;
+    preview.classList.toggle('is-portrait', isPortrait(cue.scene));
+    previewFrame.style.width = `${previewSize.width}px`;
+    previewFrame.style.height = `${previewSize.height}px`;
+    const url = sceneUrl(cue.scene, cue.params, { static: 1 });
+    if (previewFrame.getAttribute('src') !== url) previewFrame.src = url;
+    fitPreview();
+  };
+  const builder = sceneBuilder({ onChange: paintPreview });
   builder.set({ scene: 'schedule', params: { day: 'today' } });
+  new ResizeObserver(fitPreview).observe(preview);
   const name = ctlText({ placeholder: t('graphics.fileNameHint'), mono: true });
   const renderBtn = btn(t('graphics.render'), { kind: 'primary', iconName: 'image' });
   const singleOut = h('div.grid.grid-renders');
+  const saveBtn = btn(t('live.saveGraphic'), { iconName: 'plus' });
+  saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
+    const cue = builder.get();
+    try { await api.post('/api/graphics', { name: name.get() || cueText(cue.scene, cue.params), ...cue }); store.refresh(); toast(t('live.graphicSaved'), 'ok'); }
+    catch (error) { toastError(error); }
+  }));
   renderBtn.addEventListener('click', () => busy(renderBtn, async () => {
     const cue = builder.get();
     const body = { scene: cue.scene, params: cue.params };
@@ -56,7 +79,8 @@ export function mount(root) {
     } catch (e) { toastError(e); }
   }));
   const singlePanel = panel(t('graphics.single'), h('p.panel-sub', t('graphics.singleSub')),
-    builder.el, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn), singleOut);
+    builder.el, preview, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut);
+  const backgrounds = backgroundPanel();
 
   // Every PNG in the output folder (also renders from earlier sessions).
   const search = h('input.input.search-input', { type: 'search', placeholder: t('graphics.filesFilter'), 'aria-label': t('graphics.filesFilter'), dataset: { search: '' } });
@@ -74,9 +98,10 @@ export function mount(root) {
     filesMsg, filesGrid);
 
   root.append(sectionHead(t('graphics.title'), t('graphics.sub')),
-    h('div.graphics-grid', h('div.col', allPanel, outPanel), h('div.col', singlePanel)),
+    h('div.graphics-grid', h('div.col', allPanel, backgrounds.el, outPanel), h('div.col', singlePanel)),
     filesPanel);
-  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg };
+  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, backgrounds, paintPreview };
+  paintPreview(builder.get());
   onAnyJob(() => paintJob());
   window.addEventListener('hll:output', (e) => { if (e.detail) fresh.add(baseName(e.detail)); loadFiles(); });
   paintJob();
@@ -128,17 +153,18 @@ function paintFiles() {
 
 function renderCard(r, { lazy = true, role } = {}) {
   const nm = baseName(r);
+  const downloadBtn = h('a.btn.btn-sm.btn-ghost', { href: r.url, download: nm }, icon('image', 14), h('span', t('graphics.downloadPng')));
   const copyBtn = h('button.btn.btn-sm.btn-ghost', { type: 'button', title: r.file }, icon('copy', 14), h('span', t('graphics.copyPath')));
   copyBtn.addEventListener('click', async () => { if (await copyText(r.file)) toast(t('common.copied'), 'ok', { timeout: 1200 }); });
   return h('article.render-card', role ? { role } : {},
-    h('a.render-thumb', { href: r.url, target: '_blank', rel: 'noopener', title: t('graphics.openPng') }, imgBox(r.url, { ratio: '16 / 9', lazy })),
+    h('a.render-thumb', { href: r.url, target: '_blank', rel: 'noopener', title: t('graphics.openPng') }, imgBox(r.url, { ratio: r.width && r.height ? `${r.width} / ${r.height}` : '16 / 9', lazy })),
     h('div.render-body',
       h('div.render-name', { title: nm }, nm),
       h('div.render-sub',
         r.mtime ? h('span', fmtStamp(r.mtime)) : null,
         r.label ? h('span', r.label) : null,
         fresh.has(nm) ? badge(t('graphics.newBadge'), 'gold', t('graphics.newTitle')) : null),
-      h('div.render-actions', copyBtn, h('a.btn.btn-sm.btn-ghost', { href: r.url, target: '_blank', rel: 'noopener' }, icon('external', 14), h('span', t('graphics.openPng'))))));
+      h('div.render-actions', copyBtn, h('a.btn.btn-sm.btn-ghost', { href: r.url, target: '_blank', rel: 'noopener' }, icon('external', 14), h('span', t('graphics.openPng'))), downloadBtn)));
 }
 
 function paintJob(force = false) {
@@ -167,5 +193,7 @@ export function update(state) {
   if (!els || !state) return;
   els.outField.setValue(state.settings.outputDir);
   els.builder.refresh(state);
+  els.backgrounds.update(state);
+  els.paintPreview(els.builder.get());
   paintJob();
 }

@@ -3,10 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const DATA = path.join(ROOT, 'data');
+export const DATA = process.env.HLL_DATA_DIR ? path.resolve(process.env.HLL_DATA_DIR) : path.join(ROOT, 'data');
 export const ASSETS = path.join(DATA, 'assets');
 export const RAW = path.join(DATA, 'raw');
-export const OUTPUT_DEFAULT = path.join(ROOT, 'output');
+export const OUTPUT_DEFAULT = process.env.HLL_OUTPUT_DIR ? path.resolve(process.env.HLL_OUTPUT_DIR) : path.join(ROOT, 'output');
 
 /** Short random id with a type prefix, e.g. "t_9f3a1c". */
 export function newId(prefix) {

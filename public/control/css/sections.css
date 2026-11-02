@@ -339,3 +339,28 @@ body:has(.page:not([hidden]) .save-bar:not([hidden])) .toasts { bottom: 92px; }
   .match-row { grid-template-columns: 44px minmax(0, 1fr) 70px minmax(0, 1fr) 80px; }
   .match-row .m-bo, .match-row .m-links { display: none; }
 }
+.tournament-list { display: grid; gap: 12px; }
+.tournament-card { border: 1px solid var(--line); border-radius: var(--r-2); padding: 16px; background: var(--bg-2); }
+.tournament-card.is-active { border-color: var(--gold); }
+.tournament-title, .tournament-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tournament-title { justify-content: space-between; }
+.tournament-title strong { overflow-wrap: anywhere; }
+.tournament-counts { color: var(--text-2); font-size: 12px; margin: 10px 0 4px; }
+.tournament-actions { margin-top: 12px; }
+.tournament-days { flex-wrap: wrap; gap: 12px; }
+.master-panel { display: grid; grid-template-columns: minmax(240px,1fr) minmax(320px,1.3fr) auto; align-items: center; gap: 20px; border-color: #6b5a1c; }
+.master-panel .panel-title { margin-bottom: 4px; }
+.master-panel .panel-sub { margin: 0; }
+.master-size { color: var(--gold); font-size: 12px; white-space: nowrap; }
+.dashboard-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.dashboard-toolbar .panel-title { margin: 0 auto 0 0; }
+.dashboard-toolbar .input { width: 220px; }
+.scene-card-select { display: block; width: 100%; border: 0; padding: 0; text-align: left; background: transparent; color: inherit; }
+.scene-card-actions { display: flex; align-items: center; gap: 5px; padding: 0 8px 9px; flex-wrap: wrap; }
+.scene-card-actions .btn { flex: 1; }
+.scene-card { text-align: left; }
+.builder-panel > .field { margin: 14px 0 9px; }
+@media (max-width: 1200px) { .master-panel { grid-template-columns: 1fr; gap: 12px; } }
+.export-preview { position: relative; width: 100%; max-width: 720px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-2); margin: 16px auto; }
+.export-preview.is-portrait { max-width: 320px; }
+.export-preview-frame { position: absolute; left: 0; top: 0; transform: scale(var(--preview-scale, .2)); transform-origin: 0 0; border: 0; background: transparent; pointer-events: none; color-scheme: light; }

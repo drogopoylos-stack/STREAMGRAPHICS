@@ -8,8 +8,11 @@ import schedule from './scenes/schedule.js';
 import matchup from './scenes/matchup.js';
 import bracket from './scenes/bracket.js';
 import sponsors from './scenes/sponsors.js';
+import socialSchedule from './scenes/social-schedule.js';
+import socialVersus from './scenes/social-versus.js';
+import { dimensionsFor } from '../../shared/scenes.js';
 
-export const SCENES = { roster, versus, 'simple-vs': simpleVs, schedule, matchup, bracket, sponsors };
+export const SCENES = { roster, versus, 'simple-vs': simpleVs, schedule, matchup, bracket, sponsors, 'social-schedule': socialSchedule, 'social-versus': socialVersus };
 
 function decorate(el, name, data, ctx) {
   el.classList.add('scene', `s-${name}`, `mode-${ctx.mode}`);
@@ -27,6 +30,17 @@ export function buildScene(data, ctx) {
   if (!mod) throw new Error(`unknown scene "${name}"`);
   const c = { ...ctx, scene: name, mode: data.mode === 'simple' ? 'simple' : 'full', waits: [] };
   const el = decorate(mod.render(data, c), name, data, c);
+  const size = dimensionsFor(name);
+  el.style.width = `${size.width}px`;
+  el.style.height = `${size.height}px`;
+  if (ctx.viewport && (ctx.viewport.width !== size.width || ctx.viewport.height !== size.height)) {
+    const scale = Math.min(ctx.viewport.width / size.width, ctx.viewport.height / size.height);
+    const wrapper = h('div', { class: 'scene scene-letterbox' });
+    el.style.transformOrigin = '0 0';
+    el.style.transform = `translate(${(ctx.viewport.width - size.width * scale) / 2}px, ${(ctx.viewport.height - size.height * scale) / 2}px) scale(${scale})`;
+    wrapper.append(el);
+    return { el: wrapper, waits: c.waits };
+  }
   return { el, waits: c.waits };
 }
 

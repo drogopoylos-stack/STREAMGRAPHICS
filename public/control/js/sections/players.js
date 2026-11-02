@@ -172,11 +172,21 @@ export async function edit(playerId) {
   noHarm.input.addEventListener('change', () => runJob({ noHarmonize: noHarm.get() }, noHarm.get() ? t('players.noHarmonizeOn') : t('players.noHarmonizeOff')));
   const reBtn = btn(t('players.reprocess'), { size: 'sm', iconName: 'refresh' });
   reBtn.addEventListener('click', () => busy(reBtn, () => runJob(null, t('common.reprocessStarted'))));
+  const defaultEngine = store.state.settings.photo.engine === 'photocraft' ? 'PhotoCraft' : t('settings.photoStandard');
+  const processor = ctlSelect({ value: p?.photoProcessor ?? 'inherit', options: [
+    { value: 'inherit', label: t('players.processorDefault', { engine: defaultEngine }) },
+    { value: 'standard', label: t('settings.photoStandard') },
+    { value: 'photocraft', label: 'PhotoCraft', disabled: !store.state.capabilities?.photocraft?.available },
+  ] });
+  let savedProcessor = p?.photoProcessor ?? 'inherit';
+  const applyProcessor = btn(t('players.processorApply'), { size: 'sm', kind: 'primary', iconName: 'refresh', disabled: !p?.photoRaw });
+  applyProcessor.addEventListener('click', () => busy(applyProcessor, () => runJob({ photoProcessor: processor.get() }, t('common.reprocessStarted'))));
 
   const photoBlock = h('div.form-block.photo-block',
     h('div.block-head', h('h3.block-title', t('players.photo')), isNew ? null : reBtn),
     h('div.photo-row', photo,
       isNew ? null : h('div.photo-side', noHarm.el, p?.bgRemoved ? h('p.field-hint', icon('check', 12), ' ', t('players.bgRemoved')) : null, jobHost)),
+    isNew ? null : h('div.form-stack', field(t('players.processor'), processor, { hint: t('players.processorHint') }), h('div.inline-row', applyProcessor)),
     h('p.field-hint', t('players.photoHint')));
 
   const body = h('div.form-stack',
@@ -240,6 +250,8 @@ export async function edit(playerId) {
       const cur = store.player(playerId);
       if (!cur) { closeDrawer({ force: true }); toast(t('common.notFoundClosed'), 'info'); return; }
       photo.setSrc(cur.photo);
+      if (processor.get() === savedProcessor) processor.set(cur.photoProcessor ?? 'inherit');
+      savedProcessor = cur.photoProcessor ?? 'inherit';
       if (document.activeElement !== noHarm.input) noHarm.set(!!cur.noHarmonize);
     },
     onClose: () => els && render(),

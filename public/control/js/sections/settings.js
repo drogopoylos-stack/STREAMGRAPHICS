@@ -7,7 +7,7 @@ import { store } from '../store.js';
 import { trackJob } from '../jobs.js';
 import {
   toast, toastError, busy, btn, sectionHead, panel, field, createForm, confirmDialog, iconBtn,
-  ctlText, ctlNumber, ctlSegmented, ctlToggle, ctlRange, ctlColor, ctlTextarea, dropZone, jobView,
+  ctlText, ctlNumber, ctlSelect, ctlSegmented, ctlToggle, ctlRange, ctlColor, ctlTextarea, dropZone, jobView,
 } from '../ui.js';
 
 export const id = 'settings';
@@ -34,7 +34,7 @@ export function mount(root) {
   const bgZone = dropZone({ src: null, ratio: '16 / 9', fit: 'cover', onFile: (file) => brandUpload('bg', file) });
   const bgReset = btn(t('settings.usePreset'), { size: 'sm', iconName: 'refresh' });
   bgReset.addEventListener('click', () => busy(bgReset, async () => {
-    try { await api.put('/api/settings', { theme: { bgImage: null } }); toast(t('settings.bgReset'), 'ok'); store.refresh(); } catch (e) { toastError(e); }
+    try { await api.put('/api/settings', { theme: { bgImage: null, versusBgImage: null, socialBgImage: null } }); toast(t('settings.bgReset'), 'ok'); store.refresh(); } catch (e) { toastError(e); }
   }));
   const logoZone = dropZone({ src: null, ratio: '1 / 1', onFile: (file) => brandUpload('league-logo', file) });
   const logoReset = btn(t('settings.resetLogo'), { size: 'sm', iconName: 'refresh' });
@@ -69,6 +69,7 @@ export function mount(root) {
   }));
   const photoPanel = panel(t('settings.photo'), h('p.panel-sub', t('settings.photoSub')),
     h('div.form-grid',
+      field(t('settings.photoEngine'), F('photo.engine', ctlSelect({ options: [{ value: 'standard', label: t('settings.photoStandard') }, { value: 'photocraft', label: 'PhotoCraft', disabled: !store.state.capabilities?.photocraft?.available }] })), { span: 2, hint: t(store.state.capabilities?.photocraft?.available ? 'settings.photocraftReady' : 'settings.photocraftMissing') }),
       field(t('settings.width'), F('photo.width', ctlNumber({ min: 200, max: 3000, step: 10 }))),
       field(t('settings.height'), F('photo.height', ctlNumber({ min: 200, max: 3000, step: 10 }))),
       field(t('settings.framing'), F('photo.framing', ctlSegmented({ options: [{ value: 'upper', label: t('settings.framingUpper') }, { value: 'full', label: t('settings.framingFull') }], size: 'sm' })), { span: 2 }),

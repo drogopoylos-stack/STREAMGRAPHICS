@@ -3,18 +3,22 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
+import sharp from 'sharp';
 import * as store from './db.js';
 import { ROOT, ASSETS, RAW, newId, deepMerge, isoDay } from './util.js';
-import { startJob, getJob, listJobs } from './jobs.js';
+import { startJob, getJob, listJobs, jobsRunning } from './jobs.js';
 import { sceneData, nextMatch, SCENES } from './scenes.js';
 import { setEntityImage, reprocessAll, assignUnmatched, importItem, listLocalFolder } from './assets.js';
 import { listDriveFolder } from './drive.js';
 import { syncHllgr } from './hllgr.js';
 import { renderScene, renderAll, setPort, closeBrowser } from './render.js';
 import { refreshDdragon } from './ddragon.js';
+import { executable as photocraftExecutable } from './photocraft.js';
+import { graphicCatalog, newGraphic } from './graphics.js';
+import { saveBackground } from './backgrounds.js';
 
 const PORT = Number(process.env.PORT) || 4610;
-const db = store.load();
+store.load();
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 * 1024 * 1024 } });
 
@@ -22,10 +26,28 @@ app.use(express.json({ limit: '2mb' }));
 // Overlays are loaded by OBS / vMix from other machines too: allow cross-origin reads.
 app.use((req, res, next) => { res.set('Access-Control-Allow-Origin', '*'); next(); });
 
+// A switch waits for uploads, imports, processing and renders to finish. A stale
+// operator tab cannot write its old tournament's form into the newly active one.
+let pendingWrites = 0;
+app.use('/api', (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const expected = req.get('X-Tournament-Id');
+  if (expected && expected !== store.activeId()) return res.status(409).json({ error: 'The active tournament changed. Reload before saving.' });
+  pendingWrites++;
+  let released = false;
+  const release = () => { if (!released) { pendingWrites--; released = true; } };
+  res.once('finish', release);
+  req.releaseTournamentWrite = release;
+  res.once('close', () => { if (!req.tournamentOperationStarted) release(); });
+  next();
+});
+
 // ---------- static ----------
 const noCache = { setHeaders: (res) => res.set('Cache-Control', 'no-cache') };
 app.get('/', (req, res) => res.redirect('/control/'));
 app.use('/control', express.static(path.join(ROOT, 'public/control'), noCache));
+app.use('/shared', express.static(path.join(ROOT, 'public/shared'), noCache));
+app.get('/overlay/master.html', (req, res) => res.sendFile(path.join(ROOT, 'public/overlay/live.html'), { headers: { 'Cache-Control': 'no-cache' } }));
 app.use('/overlay', express.static(path.join(ROOT, 'public/overlay'), noCache));
 app.use('/brand', express.static(path.join(ROOT, 'public/brand'), { maxAge: '1h' }));
 app.use('/media', express.static(ASSETS, noCache));
@@ -41,16 +63,20 @@ app.use('/fonts/:pkg', (req, res, next) => {
 
 // ---------- helpers ----------
 const wrap = (fn) => async (req, res) => {
+  req.tournamentOperationStarted = true;
   try { res.json(await fn(req, res)); } catch (e) {
     if (e.status !== 404) console.error(e);
     res.status(e.status ?? 500).json({ error: e.message });
-  }
+  } finally { req.releaseTournamentWrite?.(); }
 };
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
 function publicState() {
   const d = store.get();
   return {
+    activeTournamentId: store.activeId(), tournaments: store.tournaments(),
+    capabilities: { photocraft: photocraftStatus() },
+    backgrounds: d.backgrounds, graphics: d.graphics, screenCatalog: graphicCatalog(d),
     settings: d.settings, teams: d.teams,
     players: d.players,
     matches: d.matches.map(({ stats, ...m }) => ({ ...m, statsCount: stats?.length ?? 0 })),
@@ -60,11 +86,48 @@ function publicState() {
   };
 }
 
+function photocraftStatus() {
+  try { photocraftExecutable(); return { available: true }; }
+  catch { return { available: false }; }
+}
+
+function assertCanSwitch() {
+  if (jobsRunning() || pendingWrites > 1) throw fail(409, 'Wait for the current import, photo processing, upload or render to finish before switching tournaments.');
+}
+
+app.get('/api/tournaments', wrap(() => ({ activeTournamentId: store.activeId(), tournaments: store.tournaments() })));
+app.post('/api/tournaments', wrap(req => store.createTournament(req.body)));
+app.put('/api/tournaments/:id', wrap(req => store.updateTournament(req.params.id, req.body)));
+app.post('/api/tournaments/:id/activate', wrap(req => {
+  if (req.params.id !== store.activeId()) assertCanSwitch();
+  store.activate(req.params.id);
+  broadcast('live', store.get().live);
+  return { activeTournamentId: store.activeId(), tournaments: store.tournaments() };
+}));
+app.get('/api/photocraft/status', wrap(() => photocraftStatus()));
+app.get('/api/graphics', wrap(() => ({ graphics: store.get().graphics, catalog: graphicCatalog(store.get()) })));
+app.post('/api/graphics', wrap(req => {
+  const graphic = newGraphic(req.body, store.get());
+  store.get().graphics.push(graphic);
+  store.changed();
+  return graphic;
+}));
+app.delete('/api/graphics/:id', wrap(req => {
+  const list = store.get().graphics;
+  const index = list.findIndex(graphic => graphic.id === req.params.id);
+  if (index < 0) throw fail(404, 'Graphic not found');
+  list.splice(index, 1);
+  store.changed();
+  return { ok: true };
+}));
+
 // ---------- state + settings ----------
 app.get('/api/state', wrap(() => publicState()));
 app.put('/api/settings', wrap((req) => {
   const d = store.get();
   const body = req.body ?? {};
+  if (body.photo?.engine !== undefined && !['standard', 'photocraft'].includes(body.photo.engine)) throw fail(400, 'Unknown photo processor');
+  if (body.photo?.engine === 'photocraft' && !photocraftStatus().available) throw fail(400, 'PhotoCraft is not installed on this PC.');
   deepMerge(d.settings, body);
   if (Array.isArray(body.statDefs)) d.settings.statDefs = body.statDefs;
   store.changed();
@@ -81,7 +144,11 @@ const DEFAULTS = {
   features: () => ({ playerA: null, playerB: null, title: '', matchId: null }),
 };
 const READONLY = new Set(['id', 'logo', 'photo', 'logoRaw', 'photoRaw', 'photoStats']);
-const clean = (body) => Object.fromEntries(Object.entries(body ?? {}).filter(([k]) => !READONLY.has(k)));
+const clean = (body) => {
+  if (body?.photoProcessor !== undefined && !['inherit', 'standard', 'photocraft'].includes(body.photoProcessor)) throw fail(400, 'Unknown photo processor');
+  if (body?.photoProcessor === 'photocraft' && !photocraftStatus().available) throw fail(400, 'PhotoCraft is not installed on this PC.');
+  return Object.fromEntries(Object.entries(body ?? {}).filter(([k]) => !READONLY.has(k)));
+};
 
 for (const coll of Object.keys(PREFIX)) {
   app.post(`/api/${coll}`, wrap((req) => {
@@ -113,6 +180,14 @@ for (const coll of Object.keys(PREFIX)) {
 // ---------- assets ----------
 const KIND_COLL = { team: 'teams', player: 'players', sponsor: 'sponsors' };
 
+app.post('/api/backgrounds', upload.single('file'), wrap(async req => {
+  if (!req.file) throw fail(400, 'Choose a background image');
+  const background = await saveBackground(req.file.buffer, req.file.originalname, store.activeId());
+  store.get().backgrounds.push(background);
+  store.changed();
+  return background;
+}));
+
 app.post('/api/assets/upload', upload.single('file'), wrap(async (req) => {
   const { kind, id } = req.body ?? {};
   if (!KIND_COLL[kind]) throw fail(400, 'kind must be team, player or sponsor');
@@ -129,10 +204,11 @@ app.post('/api/brand/upload', upload.single('file'), wrap(async (req) => {
   const dir = path.join(ASSETS, 'brand');
   fs.mkdirSync(dir, { recursive: true });
   const ext = (path.extname(req.file.originalname) || '.png').toLowerCase();
-  fs.writeFileSync(path.join(dir, `${slot}${ext}`), req.file.buffer);
-  const url = `/media/brand/${slot}${ext}?v=${Date.now().toString(36)}`;
+  const filename = `${store.activeId()}-${slot}${ext}`;
+  fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+  const url = `/media/brand/${filename}?v=${Date.now().toString(36)}`;
   const s = store.get().settings;
-  if (slot === 'bg') s.theme.bgImage = url; else s.leagueLogo = url;
+  if (slot === 'bg') s.theme.bgImage = s.theme.versusBgImage = s.theme.socialBgImage = url; else s.leagueLogo = url;
   store.changed();
   return s;
 }));
@@ -181,6 +257,7 @@ app.get('/api/jobs/:id', wrap((req) => getJob(req.params.id) ?? (() => { throw f
 
 // ---------- HLL.GR ----------
 app.post('/api/hllgr/sync', wrap((req) => {
+  if (!store.get().settings.hllgr.baseUrl) throw fail(400, 'Set this tournament’s HLL.GR source URL in Settings before syncing.');
   const what = Array.isArray(req.body?.what) && req.body.what.length ? req.body.what : ['teams', 'players', 'matches', 'stats'];
   return startJob('hllgr', (job) => syncHllgr(job, what, { force: !!req.body?.force }));
 }));
@@ -196,6 +273,9 @@ app.get('/api/live', wrap(() => store.get().live));
 app.post('/api/live', wrap((req) => {
   const d = store.get();
   const { scene, params, visible } = req.body ?? {};
+  const nextScene = scene === undefined ? d.live.scene : scene;
+  const nextParams = params === undefined ? d.live.params : params;
+  if ((visible ?? d.live.visible) && nextScene) sceneData(nextScene, nextParams ?? {});
   if (scene !== undefined) {
     if (scene !== null && !SCENES.includes(scene)) throw fail(400, 'unknown scene');
     d.live.scene = scene;
@@ -258,14 +338,17 @@ app.get('/api/netinfo', wrap(() => {
 }));
 
 // The PNG files in the output folder, newest first.
-app.get('/api/output', wrap(() => {
+app.get('/api/output', wrap(async () => {
   const dir = store.get().settings.outputDir;
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => /\.png$/i.test(f)).map((name) => {
+  const files = await Promise.all(fs.readdirSync(dir).filter((f) => /\.png$/i.test(f)).map(async (name) => {
     const file = path.join(dir, name);
     const mtime = fs.statSync(file).mtimeMs;
-    return { name, file, url: `/output/${encodeURIComponent(name)}?v=${Math.round(mtime).toString(36)}`, mtime };
-  }).sort((a, b) => b.mtime - a.mtime);
+    let width, height;
+    try { ({ width, height } = await sharp(file).metadata()); } catch { /* file is still being written */ }
+    return { name, file, width, height, url: `/output/${encodeURIComponent(name)}?v=${Math.round(mtime).toString(36)}`, mtime };
+  }));
+  return files.sort((a, b) => b.mtime - a.mtime);
 }));
 
 app.use('/api', (req, res) => res.status(404).json({ error: `no route ${req.method} ${req.path}` }));
@@ -274,8 +357,9 @@ app.use('/api', (req, res) => res.status(404).json({ error: `no route ${req.meth
 setPort(PORT);
 const server = app.listen(PORT, () => {
   console.log(`HLL graphics: control panel http://localhost:${PORT}/  ·  live overlay http://localhost:${PORT}/overlay/live.html`);
-  refreshDdragon().catch(() => {});
+  if (process.env.HLL_TEST !== '1') refreshDdragon().catch(() => {});
 });
 const shutdown = async () => { store.saveNow(); await closeBrowser(); server.close(); process.exit(0); };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+if (process.env.HLL_TEST === '1' && process.send) process.on('message', message => { if (message === 'shutdown') void shutdown(); });

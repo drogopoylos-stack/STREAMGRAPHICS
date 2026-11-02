@@ -133,6 +133,15 @@ code, .mono { font-family: var(--font-mono); font-size: .92em; }
   background: linear-gradient(90deg, var(--crimson) 0, var(--crimson) 120px, transparent 420px);
 }
 .topbar-inner { height: 100%; display: flex; align-items: center; gap: var(--s-4); padding: 0 var(--s-4); }
+.tournament-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tournament-picker { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tournament-picker > span { color: var(--text-3); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.tournament-picker .select { width: 220px; height: 30px; padding-top: 3px; padding-bottom: 3px; }
+@media (max-width: 1100px) {
+  .tournament-picker .select { width: 160px; }
+  .tournament-controls > .btn span { display: none; }
+  .topbar-inner { gap: 10px; }
+}
 
 .brand { display: flex; align-items: center; gap: var(--s-3); color: var(--text); min-width: calc(var(--nav-w) - var(--s-4)); }
 .brand:hover { text-decoration: none; }

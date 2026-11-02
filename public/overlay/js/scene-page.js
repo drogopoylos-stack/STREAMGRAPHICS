@@ -2,9 +2,10 @@
 import { readFlags, mountStage, fetchSceneData, subscribe, markReady, sleep } from './core.js';
 import { buildScene, errorScene, prepare, reveal } from './render.js';
 import { animateIn } from './anim.js';
+import { dimensionsFor } from '../../shared/scenes.js';
 
 const flags = readFlags();
-const stage = mountStage();
+const stage = mountStage(dimensionsFor(flags.scene));
 if (flags.static) document.body.classList.add('is-static');
 
 const ctx = { scene: flags.scene, params: flags.params, bg: flags.bg, static: flags.static };

@@ -4,9 +4,10 @@ import { icon } from '../icons.js';
 import { t, fmtDate } from '../strings.js';
 import { api } from '../api.js';
 import { store } from '../store.js';
-import { toast, toastError, busy, btn, thumb, ctlSelect, ctlSegmented, field, emptyState } from '../ui.js';
+import { toast, toastError, busy, btn, thumb, ctlSelect, ctlSegmented, ctlText, copyField, field, emptyState, confirmDialog } from '../ui.js';
 import { quickCards, sceneUrl, cueText, describe, sameCue, cleanParams, matchOptions } from '../scenes.js';
 import { sceneBuilder } from '../builder.js';
+import { MASTER_URL } from '../../../shared/scenes.js';
 
 let cue = null; // { scene, params }
 let els = null;
@@ -29,32 +30,50 @@ export function mount(root, nav) {
 
   const hideBtn = h('button.btn.btn-hide', { type: 'button', onclick: () => hide(), title: `${t('live.hide')} (Esc)` }, icon('eyeOff', 16), h('span', t('live.hide')), h('kbd', t('live.hideHint')));
   const showBtn = btn(t('live.showAgain'), { iconName: 'eye', onclick: () => showAgain() });
-  const reloadBtn = h('button.btn.btn-icon.btn-ghost', { type: 'button', title: t('live.reload'), 'aria-label': t('live.reload'), onclick: () => { program.frames[0].src = '/overlay/live.html'; } }, icon('refresh', 16));
+  const reloadBtn = h('button.btn.btn-icon.btn-ghost', { type: 'button', title: t('live.reload'), 'aria-label': t('live.reload'), onclick: () => { program.frames[0].src = MASTER_URL; } }, icon('refresh', 16));
   setKids(program.foot, h('div.foot-left', reloadBtn, showBtn), hideBtn);
-  program.frames[0].src = '/overlay/live.html';
+  program.frames[0].src = MASTER_URL;
 
   const groups = {
+    saved: pickerGroup(t('live.groupSaved')),
     match: pickerGroup(t('live.groupMatch')),
     rosters: pickerGroup(t('live.groupRosters')),
     matchups: pickerGroup(t('live.groupMatchups')),
     other: pickerGroup(t('live.groupOther')),
+    social: pickerGroup(t('live.groupSocial')),
   };
   const picker = h('div.picker', { 'aria-label': 'Scenes' }, Object.values(groups).map((g) => g.el));
   picker.addEventListener('keydown', onPickerKey);
 
   builder = sceneBuilder({ onChange: (c) => setCue(c, { fromBuilder: true }) });
-  const builderPanel = h('section.panel.builder-panel', h('h2.panel-title', t('live.builder')), h('p.panel-sub', t('live.builderHint')), builder.el);
+  const graphicName = ctlText({ placeholder: t('live.graphicName'), maxlength: 100 });
+  const saveBtn = btn(t('live.saveGraphic'), { iconName: 'plus' });
+  saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
+    if (!cue) return;
+    try {
+      await api.post('/api/graphics', { name: graphicName.get() || cueText(cue.scene, cue.params), ...cue });
+      graphicName.set(''); store.refresh(); toast(t('live.graphicSaved'), 'ok');
+    } catch (error) { toastError(error); }
+  }));
+  const builderPanel = h('section.panel.builder-panel', h('h2.panel-title', t('live.builder')), h('p.panel-sub', t('live.builderHint')), builder.el, field(t('live.graphicName'), graphicName), saveBtn);
+  const search = h('input.input', { type: 'search', placeholder: t('live.searchGraphics'), 'aria-label': t('live.searchGraphics') });
+  const category = ctlSelect({ options: [{ value: '', label: t('live.allGraphics') }, ...Object.keys(groups).map(key => ({ value: key, label: ({ saved: t('live.groupSaved'), match: t('live.groupMatch'), rosters: t('live.groupRosters'), matchups: t('live.groupMatchups'), other: t('live.groupOther'), social: t('live.groupSocial') })[key] }))] });
+  const count = h('span.field-hint');
+  search.addEventListener('input', () => update(store.state));
+  category.el.addEventListener('change', () => update(store.state));
 
   const score = scorePanel();
 
   const keys = h('p.live-keys', icon('key', 14), t('live.keys'));
   root.append(h('div.live',
+    h('section.panel.master-panel', h('div', h('h1.panel-title', t('live.masterTitle')), h('p.panel-sub', t('live.masterHint'))), copyField(`${location.origin}${MASTER_URL}`, { open: true }), h('span.master-size', 'OBS / vMix · 1920 × 1080')),
     h('div.monitors', preview.el, program.el),
+    h('div.dashboard-toolbar', h('h2.panel-title', t('live.dashboardTitle')), search, category.el, count),
     h('div.live-lower',
       h('div.live-picker', picker, keys),
       h('aside.live-side', score.el, builderPanel))));
 
-  els = { preview, program, takeBtn, exportBtn, exportInfo, hideBtn, showBtn, groups, picker, score };
+  els = { preview, program, takeBtn, exportBtn, exportInfo, hideBtn, showBtn, groups, picker, score, search, category, count };
   for (const m of [preview, program]) new ResizeObserver(() => fit(m)).observe(m.screen);
   if (store.live?.scene) setCue({ scene: store.live.scene, params: store.live.params });
   else paintPreview();
@@ -150,6 +169,11 @@ export async function take() {
   } catch (e) { toastError(e); }
 }
 
+async function takeCard(card, button) {
+  setCue(card);
+  await busy(button, () => take());
+}
+
 export async function hide() {
   try {
     await api.post('/api/live', { visible: false });
@@ -214,13 +238,18 @@ function pickerGroup(title) {
 }
 
 function cardEl(c) {
-  const b = h('button.scene-card', { type: 'button', dataset: { key: c.key } },
-    h('div.card-art', art(c.art)),
-    h('div.card-text', h('span.card-title', c.title), h('span.card-sub', c.sub)),
-    h('span.card-flags'));
+  const select = h('button.scene-card-select', { type: 'button', 'aria-label': `${t('live.preview')} ${c.title}` }, h('div.card-art', art(c.art)), h('div.card-text', h('span.card-title', c.title), h('span.card-sub', c.sub)), h('span.card-flags'));
+  const takeButton = btn(t('live.take'), { size: 'sm', kind: 'primary', iconName: 'play', disabled: c.ready === false });
+  const previewButton = btn(t('live.preview'), { size: 'sm', onclick: () => setCue(c) });
+  takeButton.addEventListener('click', () => takeCard(c, takeButton));
+  const remove = c.savedId ? btn(t('common.delete'), { size: 'sm', iconName: 'trash', onclick: async () => {
+    if (!(await confirmDialog({ title: t('common.confirmDelete', { name: c.title }), body: t('live.removeGraphicHint') }))) return;
+    try { await api.del(`/api/graphics/${encodeURIComponent(c.savedId)}`); store.refresh(); } catch (error) { toastError(error); }
+  } }) : null;
+  const b = h('article.scene-card', { tabIndex: 0, dataset: { key: c.key } }, select, h('div.scene-card-actions', previewButton, takeButton, remove));
   if (c.warn) b.classList.add('is-warn');
-  b.addEventListener('click', () => setCue(c));
-  b.addEventListener('dblclick', () => { setCue(c); take(); });
+  select.addEventListener('click', () => setCue(c));
+  select.addEventListener('dblclick', () => { if (c.ready !== false) { setCue(c); take(); } });
   b._card = c;
   return b;
 }
@@ -354,9 +383,14 @@ function paintScore() {
 
 export function update(state) {
   if (!els || !state) return;
-  const cards = quickCards(state);
+  const all = quickCards(state);
+  const query = els.search.value.trim().toLocaleLowerCase();
+  const category = els.category.get();
+  const cards = all.filter(card => (!category || card.group === category) && (!query || `${card.title} ${card.sub}`.toLocaleLowerCase().includes(query)));
+  els.count.textContent = `${cards.length} / ${all.length}`;
   for (const [g, grp] of Object.entries(els.groups)) {
     const list = cards.filter((c) => c.group === g);
+    grp.el.hidden = !list.length;
     if (g === 'matchups' && !list.length) {
       if (!grp.grid.querySelector('.picker-empty')) {
         setKids(grp.grid, h('div.picker-empty', t('live.noMatchups'), ' ', h('button.btn-link', { type: 'button', onclick: () => goto('matchups') }, t('live.createMatchup'))));

@@ -33,7 +33,7 @@ function keyOf(live) {
 /** Fetch + build + prepare (hidden) a scene. Never throws: on error returns an empty layer. */
 async function build(live) {
   const { params, bg, mode } = effective(live);
-  const ctx = { scene: live.scene, params, bg, static: flags.static };
+  const ctx = { scene: live.scene, params, bg, static: flags.static, viewport: { width: 1920, height: 1080 } };
   try {
     const data = await fetchSceneData(live.scene, params, { ...flags, mode, data: null });
     const { el, waits } = buildScene(data, ctx);

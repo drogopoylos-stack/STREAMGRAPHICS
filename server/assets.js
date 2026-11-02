@@ -7,6 +7,7 @@ import * as store from './db.js';
 import { ASSETS, RAW, newId, bestMatch, nameKey, IMAGE_EXT } from './util.js';
 import { labStats, targetLook, harmonize, keyOutBackground, dominantColors } from './lib/colour.js';
 import { removeBackground } from './bgremove.js';
+import { editPhoto } from './photocraft.js';
 
 const KIND_DIR = { team: 'teams', player: 'players', sponsor: 'sponsors' };
 const COLLECTION = { team: 'teams', player: 'players', sponsor: 'sponsors' };
@@ -77,12 +78,18 @@ export async function processLogo(input, { size = 512, square = true, maxW = 800
 // ---------- player photos ----------
 
 /** Cut-out of a player photo (no framing yet): raw RGBA trimmed to the figure. */
-async function cutout(input, removeBg) {
+async function cutout(input, removeBg, engine) {
   let { data, info } = await rawRgba(input);
   let removed = false;
   if (removeBg && !hasTransparentBorder(data, info.width, info.height)) {
     ({ data, info } = await removeBackground(await sharp(input).rotate().png().toBuffer()));
     removed = true;
+  }
+  if (removeBg && engine === 'photocraft') {
+    const mask = await raw(data, info).png().toBuffer();
+    const original = await sharp(input).rotate().removeAlpha().ensureAlpha().png().toBuffer();
+    const refined = await editPhoto(original, { mask });
+    ({ data, info } = await sharp(refined).ensureAlpha().raw().toBuffer({ resolveWithObject: true }));
   }
   const box = alphaBox(data, info.width, info.height, 24);
   if (box && (box.width < info.width || box.height < info.height)) {
@@ -117,11 +124,13 @@ function cutoutFile(id) { return path.join(RAW, 'cutouts', `${id}.png`); }
 /** Step 1 for one player: cut out and measure. Saves the cut-out and photoStats on the player. */
 async function preparePlayer(p, settings) {
   if (!p.photoRaw || !fs.existsSync(p.photoRaw)) return false;
-  const { data, info, removed } = await cutout(p.photoRaw, settings.photo.removeBg);
+  const engine = p.photoProcessor && p.photoProcessor !== 'inherit' ? p.photoProcessor : settings.photo.engine;
+  const { data, info, removed } = await cutout(p.photoRaw, settings.photo.removeBg, engine);
   fs.mkdirSync(path.dirname(cutoutFile(p.id)), { recursive: true });
   await raw(data, info).png().toFile(cutoutFile(p.id));
   p.photoStats = labStats(data, info.width, info.height, { alphaMin: 128, step: 3 });
   p.bgRemoved = removed;
+  p.photoEngine = engine === 'photocraft' ? 'photocraft' : 'standard';
   return true;
 }
 
@@ -131,8 +140,14 @@ async function finishPlayer(p, settings, look) {
   if (!fs.existsSync(file)) return false;
   let { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const ph = settings.photo;
+  const engine = p.photoProcessor && p.photoProcessor !== 'inherit' ? p.photoProcessor : ph.engine;
   if (ph.harmonize && look && p.photoStats?.mean && !p.noHarmonize) {
-    data = harmonize(data, info.width, info.height, p.photoStats, look, { strength: ph.strength ?? 0.7, protectSkin: true });
+    if (engine === 'photocraft') {
+      const corrected = await editPhoto(await raw(data, info).png().toBuffer(), { correctColor: true, strength: ph.strength ?? 0.7 });
+      ({ data, info } = await sharp(corrected).ensureAlpha().raw().toBuffer({ resolveWithObject: true }));
+    } else {
+      data = harmonize(data, info.width, info.height, p.photoStats, look, { strength: ph.strength ?? 0.7, protectSkin: true });
+    }
   }
   const png = await frame(data, info, ph);
   fs.mkdirSync(path.join(ASSETS, 'players'), { recursive: true });
@@ -202,19 +217,24 @@ export async function setEntityImageFromUrl(kind, entity, url) {
 export async function reprocessAllPlayers(job) {
   const db = store.get();
   const list = db.players.filter((p) => p.photoRaw);
+  const prepared = [];
+  const errors = [];
   let i = 0;
   for (const p of list) {
     job?.progress((i++ / list.length) * 0.6, `Cut-out ${p.nick}`);
-    try { await preparePlayer(p, db.settings); } catch (e) { job?.log(`${p.nick}: ${e.message}`); }
+    try { if (await preparePlayer(p, db.settings)) prepared.push(p); }
+    catch (e) { errors.push({ id: p.id, nick: p.nick, error: e.message }); job?.log(`${p.nick}: ${e.message}`); }
   }
   const look = currentLook(db);
   i = 0;
-  for (const p of list) {
-    job?.progress(0.6 + (i++ / list.length) * 0.4, `Colour + frame ${p.nick}`);
-    try { await finishPlayer(p, db.settings, look); } catch (e) { job?.log(`${p.nick}: ${e.message}`); }
+  let completed = 0;
+  for (const p of prepared) {
+    job?.progress(0.6 + (i++ / prepared.length) * 0.4, `Colour + frame ${p.nick}`);
+    try { if (await finishPlayer(p, db.settings, look)) completed++; }
+    catch (e) { errors.push({ id: p.id, nick: p.nick, error: e.message }); job?.log(`${p.nick}: ${e.message}`); }
   }
   store.changed();
-  return { players: list.length };
+  return { players: completed, requested: list.length, errors };
 }
 
 export async function reprocessAll(kind, job) {

@@ -39,6 +39,7 @@ async function load() {
   inflight = (async () => {
     try {
       const s = await api.get('/api/state');
+      api.tournamentId ??= s.activeTournamentId;
       store.state = s;
       store.loadError = null;
       for (const k of Object.keys(store.idx)) store.idx[k] = new Map((s[k] ?? []).map((x) => [x.id, x]));

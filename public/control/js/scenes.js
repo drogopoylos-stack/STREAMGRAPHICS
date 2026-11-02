@@ -1,11 +1,12 @@
 // Scene catalogue for the control panel: labels, URLs, quick cards.
 import { t, fmtDate } from './strings.js';
 import { store } from './store.js';
+import { SCENE_IDS, sceneDefinition } from '../../shared/scenes.js';
 
-export const SCENES = ['schedule', 'versus', 'simple-vs', 'roster', 'matchup', 'bracket', 'sponsors'];
+export const SCENES = SCENE_IDS;
 export const PARAM_OF = { schedule: 'day', versus: 'match', 'simple-vs': 'match', roster: 'team', matchup: 'feature', bracket: null, sponsors: null };
 
-export const sceneName = (scene) => (scene ? t(`scenes.${scene}`) : '');
+export const sceneName = scene => scene ? (t(`scenes.${scene}`) === `scenes.${scene}` ? sceneDefinition(scene)?.label ?? scene : t(`scenes.${scene}`)) : '';
 
 /** Drop empty values, sort keys → stable object. */
 export function cleanParams(params = {}) {
@@ -63,8 +64,10 @@ export function describe(scene, params = {}) {
   const title = sceneName(scene);
   let detail = '';
   switch (scene) {
-    case 'schedule': detail = dayParamLabel(params.day); break;
+    case 'schedule':
+    case 'social-schedule': detail = dayParamLabel(params.day) + (params.page ? ` · ${t('live.page')} ${params.page}` : ''); break;
     case 'versus':
+    case 'social-versus':
     case 'simple-vs': {
       const m = store.match(params.match) ?? store.match(store.state?.nextMatch);
       detail = m ? matchLabel(m) : t('scenes.nextMatch');
@@ -103,6 +106,7 @@ const countLabel = (n) => (n === 0 ? t('scenes.noMatches') : n === 1 ? t('scenes
  */
 export function quickCards(state = store.state) {
   if (!state) return [];
+  if (Array.isArray(state.screenCatalog)) return state.screenCatalog;
   const cards = [];
   const today = state.today;
   const tomorrow = today ? addDays(today, 1) : null;

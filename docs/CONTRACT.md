@@ -28,7 +28,7 @@ Settings = {
   bracketEmbed: "",                    // raw embed HTML (<iframe ...>) or a URL, pasted by the user
   outputDir: "G:\\HLLTEST\\output",
   logoSize: 512,                       // processed logo canvas (square)
-  photo: { width: 800, height: 1000, framing: "upper" | "full", removeBg: true, harmonize: true, strength: 0.7 },
+  photo: { width: 800, height: 1000, framing: "upper" | "full", removeBg: true, harmonize: true, strength: 0.7, engine: "standard" | "photocraft" },
   statDefs: [ { key: "kills", label: "Kills", better: "high" | "low", fmt: "int" | "dec1" | "dec2" | "pct" } ],
   drive: { apiKey: "" },
   hllgr: { baseUrl: "https://hll.gr", cookie: "" },
@@ -46,14 +46,31 @@ Feature = { id, playerA, playerB, title: "Mid lane duel", matchId: string|null }
 Live    = { scene: SceneName|null, params: {}, visible: bool, rev: number }
 Job     = { id, kind, status: "running"|"done"|"error", progress: 0..1, message, log: [string], result }
 Unmatched = { file, url, kind: "team"|"player"|"sponsor"|"unknown", guess: id|null }  // imported files not linked yet
-State   = { settings, teams, players, matches, sponsors, features, live, unmatched, jobs }
+Tournament = { id, name, short, season, createdAt, broadcastDays: [1..7], teams: number, players: number, matches: number }
+Background = { id, name, url, width, height }
+Graphic = { id, name, scene, params, createdAt }
+ScreenCard = { key, scene, params, title, sub, group, art, width, height, ready, warn, savedId? }
+State   = { activeTournamentId, tournaments: [Tournament], capabilities: { photocraft: { available: bool } }, backgrounds: [Background], graphics: [Graphic], screenCatalog: [ScreenCard], settings, teams, players, matches, sponsors, features, live, unmatched, jobs }
 ```
+
+Player records can include `photoProcessor: "inherit"|"standard"|"photocraft"` (default inherit), which overrides that tournament's photo engine for this player. `photoEngine` records the last processor used. The original-colour toggle `noHarmonize` skips colour correction with either processor.
+
+The database is a versioned envelope `{schemaVersion:2, activeTournamentId, revision, tournaments:[{id,createdAt,broadcastDays,data}]}`. Each `data` object contains its own settings and entity arrays. The store exposes only the active tournament to normal routes. Legacy flat databases migrate automatically with a backup; their existing media URLs, raw files, settings and output directory are retained. New tournaments get separate output folders, and branding uploads use tournament-prefixed filenames. Broadcast weekdays are Monday=1 through Sunday=7 and do not schedule automatic switches.
 
 ## REST API (JSON in, JSON out; errors → `{ error: "message" }` with 4xx/5xx)
 
 | Method + path | Body / query | Returns |
 | --- | --- | --- |
 | `GET /api/state` | | `State` |
+| `GET /api/tournaments` | | `{activeTournamentId, tournaments}` |
+| `POST /api/tournaments` | `{name, short?, season?, broadcastDays?}` | new `Tournament` (does not activate it) |
+| `PUT /api/tournaments/:id` | partial `{name, short, season, broadcastDays}` | updated `Tournament` |
+| `POST /api/tournaments/:id/activate` | `{}` | `{activeTournamentId, tournaments}`; takes graphics off air; 409 while work is in progress |
+| `GET /api/photocraft/status` | | `{available: bool}` |
+| `GET /api/graphics` | | `{graphics: [Graphic], catalog: [ScreenCard]}` for the active tournament |
+| `POST /api/graphics` | `{name, scene, params?}` | saved live preset `Graphic` |
+| `DELETE /api/graphics/:id` | | removes the saved preset; media and exports stay intact |
+| `POST /api/backgrounds` | multipart `file` | normalized PNG `Background`, limited to 40 MP, resized within 3840×3840 |
 | `PUT /api/settings` | partial `Settings` (deep merge) | `Settings` |
 | `POST /api/teams` · `PUT /api/teams/:id` · `DELETE /api/teams/:id` | partial `Team` | `Team` / `{ok:true}` |
 | same for `/api/players`, `/api/matches`, `/api/sponsors`, `/api/features` | | |
@@ -65,12 +82,14 @@ State   = { settings, teams, players, matches, sponsors, features, live, unmatch
 | `POST /api/hllgr/sync` | `{ what: ["teams","players","matches","stats"] }` | `Job` |
 | `GET /api/scene-data` | `?scene=…&<params>` | scene data (below) |
 | `GET /api/live` · `POST /api/live` | `{ scene, params, visible }` | `Live` |
-| `POST /api/render` | `{ scene, params, name? }` | `{ file, url }` (1920×1080 PNG, transparent where the scene has no background) |
+| `POST /api/render` | `{ scene, params, name? }` | `{ scene, name, file, url, width, height }`; broadcast PNG 1920×1080, social PNG 1080×1920 |
 | `POST /api/render/all` | | `Job` → result `[{scene, file, url}]` |
 | `GET /api/live/stream` | Server-Sent Events | events `live` (data: `Live`) and `state` (data: `{rev}` — refetch) |
 | `GET /api/vmix/data` | | flat JSON array for vMix Data Sources (one row per match of today) |
 | `GET /api/netinfo` | | `{ addresses: ["192.168.x.x"], port }` — LAN IPv4 addresses for the OBS / vMix page |
 | `GET /api/output` | | `[{ name, file, url, mtime }]` — the PNG files in `settings.outputDir`, newest first |
+
+The control panel sends `X-Tournament-Id` with writes. If it differs from the active tournament the server returns 409, preventing stale forms in another tab from changing the wrong tournament. Switching waits for jobs and outstanding uploads/renders. Live revisions remain increasing across switches and a hidden `live` SSE event clears the current graphic. Open control panels reload on an active tournament change so drafts, filters, editors and job displays cannot leak into the new workspace.
 
 ## Scenes (`SceneName`) and `GET /api/scene-data`
 
@@ -87,11 +106,17 @@ Every scene response has `{ scene, mode, league: {name, short, season, logo}, th
 | `matchup` | `feature` (or `a`, `b` player ids) | `title`, `playerA`, `playerB` (Player + `team: Team`), `rows: [{ key, label, a, b, aText, bText, fmt, better, winner: "a"\|"b"\|"tie" }]` (values are per-GAME averages; `aText`/`bText` already formatted), `gamesA`, `gamesB`, `winrateA`, `winrateB` (0..1 or null), `championsA`, `championsB`: `[{ name, games, icon }]` top 3 (icon = Data Dragon URL), `headToHead: number` (games where both played) |
 | `bracket` | | `embed: { type: "iframe"\|"url", src: string, html: string }` |
 | `sponsors` | | (uses `sponsors`) |
+| `social-schedule` | `day`, `page` (1-based) | day schedule with up to six fixtures; `{pagination:{page,pages,total}}`; 1080×1920 |
+| `social-versus` | `match`, `playerA?`, `playerB?`, `effect=halftone|prism|none` | both teams and one visible player from each team; player overrides must belong to the correct team; 1080×1920 |
+
+All scenes accept `background=<uploaded background id>` to override the tournament defaults for that graphic, or `background=preset` for the built-in design. Background ids are resolved only within the active tournament. Theme fields `bgImage`, `versusBgImage`, and `socialBgImage` control default plates. A social-specific background falls back to the general one. The photo effect is a visual overlay; it does not edit the stored photo files.
+
+Scene metadata and dimensions are shared in `public/shared/scenes.js`; server validation, the dashboard, builders and exports consume that registry. To extend it, add a definition with a target (`day`, `match`, `team`, `feature`, or `single`) and register its renderer in `public/overlay/js/render.js`. Cards are generated automatically for registered scene targets and saved presets. Missing source data makes a saved card unavailable instead of silently selecting a different team or match.
 
 ## Overlay URL rules (for OBS / vMix)
 
-- `/overlay/live.html` — follows `Live` with SSE; animates in/out when the scene changes or `visible` toggles. One browser source for everything.
+- `/overlay/master.html` — permanent 1920×1080 source for every registered screen, following `Live` with SSE. Portrait scenes are centred and scaled within this landscape canvas. `/overlay/live.html` remains a compatible alias.
 - `/overlay/scene.html?scene=versus&match=m_x` — one fixed scene; it re-renders on SSE `state` events.
 - Query flags on both: `static=1` (no animation; final frame at once — used by the PNG renderer), `bg=0` (no background plate → transparent, for keying over gameplay), `mode=simple|full` (override).
-- Canvas is always 1920×1080 CSS px. Body background is transparent.
+- Broadcast scene canvases are 1920×1080; standalone social scenes are 1080×1920. Body background is transparent outside the graphic.
 - When `static=1`, the page sets `document.body.dataset.ready = "1"` after fonts and images load. The renderer waits for it.

@@ -16,6 +16,7 @@ import * as importer from './sections/import.js';
 import * as graphics from './sections/graphics.js';
 import * as settings from './sections/settings.js';
 import * as help from './sections/help.js';
+import { createTournamentControls } from './tournaments.js';
 
 const SECTIONS = [live, teams, players, matches, matchups, sponsors, importer, graphics, settings, help];
 const byId = new Map(SECTIONS.map((s) => [s.id, s]));
@@ -23,6 +24,8 @@ const pages = new Map(); // id → { el, mounted, stale }
 let current = null;
 let navEls = new Map();
 let hdr = null;
+let loadedTournamentId = null;
+let tournamentChanging = false;
 
 /* ------------------------------------------------------------- boot */
 
@@ -39,6 +42,7 @@ async function boot() {
     return;
   }
   bootEl.remove();
+  loadedTournamentId = store.state.activeTournamentId;
   document.getElementById('app').hidden = false;
   buildHeader();
   buildNav();
@@ -55,7 +59,7 @@ async function boot() {
   window.addEventListener('hashchange', route);
   document.addEventListener('keydown', onKey);
   window.addEventListener('beforeunload', (e) => {
-    if (drawerState()?.isDirty() || settings.isDirty()) { e.preventDefault(); e.returnValue = ''; }
+    if (!tournamentChanging && (drawerState()?.isDirty() || settings.isDirty())) { e.preventDefault(); e.returnValue = ''; }
   });
   route();
   paintOnAir(store.live);
@@ -124,6 +128,11 @@ function show(id, opts) {
 
 function onState(state) {
   if (!state) return;
+  if (loadedTournamentId && state.activeTournamentId !== loadedTournamentId) {
+    tournamentChanging = true;
+    location.reload();
+    return;
+  }
   if (store.loadError) { paintConn(); return; }
   syncJobs(state.jobs);
   for (const [id, page] of pages) {
@@ -158,20 +167,23 @@ function buildHeader() {
   jobsBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleJobs(); });
   document.addEventListener('click', (e) => { if (!jobsPop.hidden && !jobsPop.contains(e.target)) toggleJobs(false); });
   const conn = h('span.conn', { role: 'status' }, h('span.conn-dot'), h('span.conn-text'));
+  const tournament = createTournamentControls({ isDirty: () => !!drawerState()?.isDirty() || settings.isDirty() });
   const bar = h('div.topbar-inner',
     h('a.brand', { href: '#/live' }, logo, title),
+    tournament.el,
     h('div.onair-wrap', onair, hideBtn),
     h('div.spacer'),
     h('div.jobs-wrap', jobsBtn, jobsPop),
     conn);
   setKids(document.getElementById('topbar'), bar);
-  hdr = { logo, title, onair, hideBtn, jobsBtn, jobsPop, conn };
+  hdr = { logo, title, onair, hideBtn, jobsBtn, jobsPop, conn, tournament };
   paintHeaderMeta(store.state);
 }
 
 function paintHeaderMeta(state) {
   if (!hdr || !state) return;
   const s = state.settings;
+  hdr.tournament.update(state);
   const want = s.leagueLogo || '/brand/hll-logo.png';
   if (hdr.logo.getAttribute('src') !== want) hdr.logo.src = want;
   hdr.title.querySelector('.brand-sub').textContent = [s.leagueName, s.season].filter(Boolean).join(' · ');
@@ -293,7 +305,10 @@ function onKey(e) {
 
   if (k === 'Enter' && current === 'live' && !inDrawer && !inPop && !e.repeat) {
     const card = tgt.closest?.('.scene-card');
-    if (card) { e.preventDefault(); live.handleEnter(tgt); return; }
+    if (card) {
+      if (tgt.closest?.('button, a, input, select')) return;
+      e.preventDefault(); live.handleEnter(tgt); return;
+    }
     if (isTextTarget(tgt) || ['SELECT', 'TEXTAREA', 'BUTTON', 'A', 'SUMMARY', 'INPUT'].includes(tgt.tagName) || tgt.isContentEditable || tgt.closest?.('[role=button], .dropzone')) return;
     e.preventDefault();
     live.handleEnter(tgt);

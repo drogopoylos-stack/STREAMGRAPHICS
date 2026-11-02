@@ -1,10 +1,11 @@
 import { newId } from './util.js';
+import { activeId } from './db.js';
 
 const jobs = new Map();
 
 /** Run `fn(job)` in the background and return the job record at once. */
 export function startJob(kind, fn) {
-  const job = { id: newId('j'), kind, status: 'running', progress: 0, message: 'Starting…', log: [], result: null, started: Date.now() };
+  const job = { id: newId('j'), tournamentId: activeId(), kind, status: 'running', progress: 0, message: 'Starting…', log: [], result: null, started: Date.now() };
   jobs.set(job.id, job);
   const api = {
     progress(p, message) { job.progress = Math.max(0, Math.min(1, p)); if (message) job.message = message; },
@@ -21,6 +22,8 @@ export function getJob(id) {
   return jobs.get(id) ?? null;
 }
 
-export function listJobs() {
-  return [...jobs.values()].sort((a, b) => b.started - a.started).slice(0, 20);
+export function listJobs({ all = false } = {}) {
+  return [...jobs.values()].filter(j => all || j.tournamentId === activeId()).sort((a, b) => b.started - a.started).slice(0, 20);
 }
+
+export function jobsRunning() { return [...jobs.values()].some(j => j.status === 'running'); }

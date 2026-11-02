@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import * as store from './db.js';
+import { dimensionsFor } from '../public/shared/scenes.js';
+import { sceneData } from './scenes.js';
 
 const CANDIDATES = [
   process.env.HLL_BROWSER,
@@ -33,7 +35,7 @@ function browser() {
 
 export async function closeBrowser() {
   if (!browserPromise) return;
-  try { (await browserPromise).close(); } catch { /* already gone */ }
+  try { await (await browserPromise).close(); } catch { /* already gone */ }
   browserPromise = null;
 }
 
@@ -43,6 +45,8 @@ function safeName(s) {
 
 /** Render one scene to <outputDir>/<name>.png. Returns { file, url, name }. */
 export async function renderScene(scene, params = {}, name) {
+  sceneData(scene, params);
+  const { width, height } = dimensionsFor(scene);
   const outDir = store.get().settings.outputDir;
   fs.mkdirSync(outDir, { recursive: true });
   const qs = new URLSearchParams({ scene, static: '1', ...Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== '')) });
@@ -50,13 +54,14 @@ export async function renderScene(scene, params = {}, name) {
   const b = await browser();
   const pg = await b.newPage();
   try {
-    await pg.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+    await pg.setViewport({ width, height, deviceScaleFactor: 1 });
     await pg.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
-    await pg.waitForFunction(() => document.body?.dataset.ready === '1', { timeout: 20000 }).catch(() => {});
+    await pg.waitForFunction(() => document.body?.dataset.ready === '1', { timeout: 20000 });
+    if (await pg.$('.s-error')) throw new Error('The graphic could not be rendered. Check its scene data.');
     const fileName = `${safeName(name ?? [scene, ...Object.values(params)].join('-'))}.png`;
     const file = path.join(outDir, fileName);
     await pg.screenshot({ path: file, omitBackground: true, type: 'png' });
-    return { scene, name: fileName, file, url: `/output/${encodeURIComponent(fileName)}?v=${Date.now().toString(36)}` };
+    return { scene, width, height, name: fileName, file, url: `/output/${encodeURIComponent(fileName)}?v=${Date.now().toString(36)}` };
   } finally {
     await pg.close().catch(() => {});
   }

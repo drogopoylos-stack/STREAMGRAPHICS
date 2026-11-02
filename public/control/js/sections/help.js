@@ -6,6 +6,7 @@ import { api } from '../api.js';
 import { store } from '../store.js';
 import { sectionHead, panel, copyField, ctlToggle, toast } from '../ui.js';
 import { quickCards, sceneUrl } from '../scenes.js';
+import { MASTER_URL } from '../../../shared/scenes.js';
 
 export const id = 'help';
 let els = null;
@@ -13,7 +14,7 @@ const flags = { bg: false, simple: false };
 let net = null; // { main: [addr], other: [addr], port } once /api/netinfo answered
 let netLoading = null;
 
-const LIVE_PATH = '/overlay/live.html';
+const LIVE_PATH = MASTER_URL;
 const PRIVATE = [/^192\.168\./, /^10\./, /^172\.(1[6-9]|2\d|3[01])\./];
 const isPrivate = (a) => PRIVATE.some((re) => re.test(a));
 const hostOf = (a) => (a.includes(':') ? `[${a}]` : a); // IPv6 literal in a URL

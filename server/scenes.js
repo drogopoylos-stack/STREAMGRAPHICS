@@ -2,8 +2,9 @@ import * as store from './db.js';
 import { aggregatePlayer, compareRows, teamRecord, formatStat, headToHead } from './lib/stats.js';
 import { isoDay, dayLabel } from './util.js';
 import { championIcon } from './ddragon.js';
+import { SCENE_IDS } from '../public/shared/scenes.js';
 
-export const SCENES = ['roster', 'versus', 'simple-vs', 'schedule', 'matchup', 'bracket', 'sponsors'];
+export const SCENES = SCENE_IDS;
 const ROLE_ORDER = ['Top', 'Jungle', 'Mid', 'Bot', 'Support', 'Coach', ''];
 
 const byId = (list, id) => list.find((x) => x.id === id) ?? null;
@@ -16,11 +17,19 @@ function rosterOf(db, teamId) {
 
 function common(db, scene, params) {
   const s = db.settings;
+  const theme = { ...s.theme };
+  if (params.background === 'preset') {
+    theme.bgImage = theme.versusBgImage = theme.socialBgImage = null;
+  } else if (params.background) {
+    const background = db.backgrounds?.find(item => item.id === params.background);
+    if (!background) throw Object.assign(new Error('Background not found in this tournament'), { status: 404 });
+    theme.bgImage = theme.versusBgImage = theme.socialBgImage = background.url;
+  }
   return {
     scene,
     mode: params.mode === 'simple' || params.mode === 'full' ? params.mode : s.mode,
     league: { name: s.leagueName, short: s.leagueShort, season: s.season, logo: s.leagueLogo },
-    theme: s.theme,
+    theme,
     sponsors: s.sponsorsOnGraphics ? db.sponsors.filter((x) => x.logo) : [],
   };
 }
@@ -89,23 +98,38 @@ function parseEmbed(raw) {
 }
 
 /** Data for one scene, ready to draw. Throws Error with .status 404 for a bad id. */
-export function sceneData(scene, params = {}) {
-  const db = store.get();
+export function sceneData(scene, params = {}, db = store.get()) {
   const base = common(db, scene, params);
   const notFound = (what) => Object.assign(new Error(`${what} not found`), { status: 404 });
 
   switch (scene) {
     case 'roster': {
+      if (params.team && !byId(db.teams, params.team)) throw notFound('team');
       const team = byId(db.teams, params.team) ?? db.teams[0];
       if (!team) throw notFound('team');
       return { ...base, team, players: rosterOf(db, team.id), record: teamRecord(team.id, db.matches) };
     }
     case 'versus':
-    case 'simple-vs': {
+    case 'simple-vs':
+    case 'social-versus': {
+      if (params.match && !byId(db.matches, params.match)) throw notFound('match');
       const match = byId(db.matches, params.match) ?? nextMatch(db);
       if (!match) throw notFound('match');
       const teamA = byId(db.teams, match.teamA), teamB = byId(db.teams, match.teamB);
       const out = { ...base, match: stripStats(match), teamA, teamB };
+      if (scene === 'social-versus') {
+        const choose = (team, requested) => {
+          if (!team) return null;
+          const players = rosterOf(db, team?.id).filter(p => p.role !== 'Coach');
+          if (requested) {
+            const player = players.find(p => p.id === requested);
+            if (!player) throw Object.assign(new Error('Choose a visible player from the matching team'), { status: 400 });
+            return player;
+          }
+          return players.find(p => p.captain && p.photo) ?? players.find(p => p.photo) ?? players[0] ?? null;
+        };
+        return { ...out, dateLabel: dayLabel(match.date), playerA: choose(teamA, params.playerA), playerB: choose(teamB, params.playerB), effect: ['none', 'prism', 'halftone'].includes(params.effect) ? params.effect : 'halftone' };
+      }
       if (scene === 'versus') {
         Object.assign(out, {
           playersA: rosterOf(db, match.teamA).filter((p) => p.role !== 'Coach'),
@@ -116,12 +140,18 @@ export function sceneData(scene, params = {}) {
       }
       return out;
     }
-    case 'schedule': {
+    case 'schedule':
+    case 'social-schedule': {
       const date = resolveDay(params.day, db.settings.timezone);
       const matches = db.matches
         .filter((m) => m.date === date)
         .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
         .map((m) => ({ ...stripStats(m), teamA: byId(db.teams, m.teamA), teamB: byId(db.teams, m.teamB) }));
+      if (scene === 'social-schedule') {
+        const pages = Math.max(1, Math.ceil(matches.length / 6));
+        const page = Math.min(pages, Math.max(1, Math.floor(Number(params.page) || 1)));
+        return { ...base, date, dateLabel: dayLabel(date), matches: matches.slice((page - 1) * 6, page * 6), pagination: { page, pages, total: matches.length } };
+      }
       return { ...base, date, dateLabel: dayLabel(date), matches };
     }
     case 'matchup': {
