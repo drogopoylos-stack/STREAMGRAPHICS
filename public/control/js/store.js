@@ -80,7 +80,9 @@ function setConn(ok) {
 }
 
 export function connectStream() {
+  // The panel polls less often than an overlay when the stream cannot get through (free Worker request budget).
   return subscribeLive({
+    pollMs: 5000,
     onConnection: ok => {
       const wasDown = !store.connected;
       setConn(ok);

@@ -483,7 +483,8 @@ app.get('/api/live/stream', (req, res) => {
   res.write(`event: live\ndata: ${JSON.stringify(store.get().live)}\n\n`);
   if (!req.access.remote) res.write(`event: remote\ndata: ${JSON.stringify(remoteState())}\n\n`);
   clients.add(res);
-  const ping = setInterval(() => res.write(': ping\n\n'), LIVE_HEARTBEAT_MS);
+  // A named event, so a client can see that a quiet stream is still alive (a comment is invisible to EventSource).
+  const ping = setInterval(() => res.write('event: ping\ndata: {}\n\n'), LIVE_HEARTBEAT_MS);
   res.on('close', () => { clearInterval(ping); clients.delete(res); });
 });
 
