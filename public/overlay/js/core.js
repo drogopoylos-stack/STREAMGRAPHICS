@@ -1,5 +1,6 @@
 // Shared plumbing for the overlay pages: query flags, stage scaling, data, SSE, fonts, auto-fit, readiness.
 import { BG_MOTIONS } from '../../shared/graphic-design.js';
+import { subscribeLive } from '../../shared/live-connection.js';
 export const W = 1920;
 export const H = 1080;
 export const TZ = 'Europe/Athens';
@@ -64,20 +65,8 @@ export async function fetchSceneData(scene, params = {}, flags = {}) {
   return body;
 }
 
-/** Server-Sent Events from /api/live/stream. EventSource reconnects by itself; we reopen if it gives up. */
-export function subscribe({ onLive, onState } = {}) {
-  let es = null;
-  const open = () => {
-    es = new EventSource('/api/live/stream');
-    es.addEventListener('live', (e) => { try { onLive?.(JSON.parse(e.data)); } catch (err) { console.warn('[overlay] live event', err); } });
-    es.addEventListener('state', (e) => { try { onState?.(JSON.parse(e.data || '{}')); } catch (err) { console.warn('[overlay] state event', err); } });
-    es.onerror = () => {
-      if (es.readyState === EventSource.CLOSED) { es = null; setTimeout(open, 3000); }
-    };
-  };
-  open();
-  return () => es?.close();
-}
+/** SSE with an immediate snapshot and polling if the stream stalls or errors. */
+export const subscribe = subscribeLive;
 
 // ---------- theme ----------
 

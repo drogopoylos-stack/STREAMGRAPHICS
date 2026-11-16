@@ -1,5 +1,9 @@
 // Access policy is independent of Express so every role and redirect can be tested.
 export const ROLES = ['full', 'social', 'overlay'];
+export function obsLinkFor(access, state) {
+  const allowed = access?.remote === false || (access?.remote === true && access.role === 'full');
+  return { overlayUrl: allowed && state.enabled ? state.links?.overlay || null : null };
+}
 export function resolveRole(key, keys = {}) {
   return typeof key === 'string' && key ? ROLES.find(role => keys[role] === key) ?? null : null;
 }

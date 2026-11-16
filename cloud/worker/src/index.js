@@ -43,6 +43,8 @@ export default {
     headers.set('x-hll-via', 'worker');
     headers.set('x-forwarded-host', url.host);
     headers.set('x-forwarded-proto', 'https');
+    const liveStream = url.pathname === '/api/live/stream';
+    if (liveStream) headers.set('accept-encoding', 'identity');
     let response;
     try {
       response = await fetch(target + url.pathname + url.search, {
@@ -55,6 +57,16 @@ export default {
     }
     // 530 / 1033: the tunnel address is gone (the PC was closed without saying so).
     if (response.status === 530) { cached = null; return new Response(OFFLINE, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }); }
+    if (liveStream && response.ok && response.headers.get('content-type')?.startsWith('text/event-stream')) {
+      // Never consume/buffer the body. Preserve the origin's bytes and prevent
+      // automatic compression on this leg. Quick tunnels still do not support SSE;
+      // clients also poll until a supported tunnel can deliver the stream.
+      const out = new Response(response.body, { status: response.status, statusText: response.statusText,
+        headers: response.headers, encodeBody: 'manual' });
+      out.headers.set('cache-control', 'no-cache, no-transform');
+      out.headers.set('x-accel-buffering', 'no');
+      return out;
+    }
     // Redirects from the PC point at the tunnel address: point them at this address.
     const location = response.headers.get('location');
     if (location && location.startsWith(target)) {

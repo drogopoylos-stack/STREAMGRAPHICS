@@ -25,7 +25,8 @@ import { designPreview } from './design-preview.js';
 import { previewTournament, tournamentRanking } from './formats/wizard.js';
 import { processLogo } from './assets.js';
 import { buildBracketEmbed } from './bracket-embed.js';
-import { createAccessMiddleware } from './remote-access.js';
+import { createAccessMiddleware, obsLinkFor } from './remote-access.js';
+import { startLiveStream, LIVE_HEARTBEAT_MS } from './live-stream.js';
 import { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, accessKeys } from './remote.js';
 
 const PORT = Number(process.env.PORT) || 4610;
@@ -99,6 +100,11 @@ const wrap = (fn) => async (req, res) => {
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
 app.get('/api/remote', wrap(() => remoteState()));
+// Read-only link sharing for full operators; management stays local only.
+app.get('/api/obs-link', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(obsLinkFor(req.access, remoteState()));
+});
 app.put('/api/remote', wrap(req => setRemoteEnabled(req.body?.enabled)));
 app.post('/api/remote/rotate', wrap(req => rotateKey(req.body?.role)));
 
@@ -427,7 +433,8 @@ app.get('/api/scene-data', wrap((req) => {
   return sceneData(scene, params);
 }));
 
-app.get('/api/live', wrap(() => store.get().live));
+// dataRev lets a polling overlay (no live stream through a quick tunnel) reload scene data only after a change.
+app.get('/api/live', wrap(() => ({ ...store.get().live, dataRev: store.get().rev })));
 app.post('/api/live', wrap((req) => {
   const d = store.get();
   const { scene, params, visible } = req.body ?? {};
@@ -472,13 +479,12 @@ startDataSync(store, (s) => broadcast('sync', s), () => broadcast('state', { rev
 app.get('/api/sync', wrap(() => syncState()));
 app.post('/api/sync/now', wrap(() => syncNow(store)));
 app.get('/api/live/stream', (req, res) => {
-  res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  res.flushHeaders();
+  startLiveStream(res);
   res.write(`event: live\ndata: ${JSON.stringify(store.get().live)}\n\n`);
   if (!req.access.remote) res.write(`event: remote\ndata: ${JSON.stringify(remoteState())}\n\n`);
   clients.add(res);
-  const ping = setInterval(() => res.write(': ping\n\n'), 20000);
-  req.on('close', () => { clearInterval(ping); clients.delete(res); });
+  const ping = setInterval(() => res.write(': ping\n\n'), LIVE_HEARTBEAT_MS);
+  res.on('close', () => { clearInterval(ping); clients.delete(res); });
 });
 
 // ---------- vMix Data Source (Settings → Data Sources → JSON) ----------

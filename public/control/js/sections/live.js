@@ -7,7 +7,7 @@ import { store } from '../store.js';
 import { toast, toastError, busy, btn, thumb, ctlSelect, ctlSegmented, ctlText, copyField, field, emptyState, confirmDialog } from '../ui.js';
 import { quickCards, sceneUrl, cueText, describe, sameCue, cleanParams, matchOptions } from '../scenes.js';
 import { sceneBuilder } from '../builder.js';
-import { MASTER_URL } from '../../../shared/scenes.js';
+import { masterLinks, overlayMonitorUrl } from '../../../shared/master-links.js';
 import { graphicBrowser } from '../graphic-browser.js';
 import { editRosters } from '../roster-editor.js';
 import { editBracketDraw } from '../bracket-editor.js';
@@ -34,9 +34,9 @@ export function mount(root, nav) {
 
   const hideBtn = h('button.btn.btn-hide', { type: 'button', onclick: () => hide(), title: `${t('live.hide')} (Esc)` }, icon('eyeOff', 16), h('span', t('live.hide')), h('kbd', t('live.hideHint')));
   const showBtn = btn(t('live.showAgain'), { iconName: 'eye', onclick: () => showAgain() });
-  const reloadBtn = h('button.btn.btn-icon.btn-ghost', { type: 'button', title: t('live.reload'), 'aria-label': t('live.reload'), onclick: () => { program.frames[0].src = MASTER_URL; } }, icon('refresh', 16));
+  const reloadBtn = h('button.btn.btn-icon.btn-ghost', { type: 'button', title: t('live.reload'), 'aria-label': t('live.reload'), onclick: () => { program.frames[0].src = overlayMonitorUrl(); } }, icon('refresh', 16));
   setKids(program.foot, h('div.foot-left', reloadBtn, showBtn), hideBtn);
-  program.frames[0].src = MASTER_URL;
+  program.frames[0].src = overlayMonitorUrl();
 
   const browser = graphicBrowser({ renderCard: cardEl, onKeyDown: onPickerKey, onRender: paintFlags });
   const picker = browser.picker;
@@ -56,20 +56,39 @@ export function mount(root, nav) {
   const matchSheet = matchSheetPanel();
 
   const keys = h('p.live-keys', icon('key', 14), t('live.keys'));
+  const masterFields = h('div.form-stack');
   root.append(h('div.live',
-    h('section.panel.master-panel', h('div', h('h1.panel-title', t('live.masterTitle')), h('p.panel-sub', t('live.masterHint'))), copyField(`${location.origin}${MASTER_URL}`, { open: true }), h('span.master-size', 'OBS / vMix · 1920 × 1080')),
+    h('section.panel.master-panel', h('div', h('h1.panel-title', t('live.masterTitle')), h('p.panel-sub', t('live.masterHint'))), masterFields, h('span.master-size', 'OBS / vMix · 1920 × 1080')),
     h('div.monitors', preview.el, program.el),
     h('section.graphics-dashboard', browser.menu, h('div.live-lower',
       h('div.live-picker', picker, browser.empty, keys),
       h('aside.live-side', matchSheet.el, score.el, builderPanel)))));
 
-  els = { preview, program, takeBtn, exportBtn, exportInfo, hideBtn, showBtn, picker, score, browser, matchSheet };
+  els = { preview, program, takeBtn, exportBtn, exportInfo, hideBtn, showBtn, picker, score, browser, matchSheet, masterFields };
+  paintMasterLinks();
+  refreshMasterLinks();
+  window.addEventListener('hll:remote', event => paintMasterLinks({ remote: event.detail }));
   for (const m of [preview, program]) new ResizeObserver(() => fit(m)).observe(m.screen);
   if (store.live?.scene) setCue({ scene: store.live.scene, params: store.live.params });
   else paintPreview();
   update(store.state);
   onLive(store.live);
 }
+
+function paintMasterLinks(options = {}) {
+  const result = masterLinks({ origin: location.origin, access: store.access, ...options });
+  setKids(els.masterFields, result.rows.map(row => h('div', h('span.field-label', row.label), copyField(row.url, { open: true }))),
+    result.note ? h('p.panel-sub', result.note) : null);
+}
+
+async function refreshMasterLinks() {
+  try {
+    if (store.access?.remote === false) paintMasterLinks({ remote: await api.get('/api/remote') });
+    else paintMasterLinks(await api.get('/api/obs-link'));
+  } catch { /* Keep a local URL or the broadcaster note if the API is unavailable. */ }
+}
+
+export function show() { refreshMasterLinks(); }
 
 /* ----------------------------------------------------------- monitors */
 
@@ -114,7 +133,7 @@ function loadPreview(url) {
     back.classList.add('front');
     front.classList.remove('front');
   };
-  back.src = url;
+  back.src = overlayMonitorUrl(url);
 }
 
 /* ----------------------------------------------------------- cue / take */

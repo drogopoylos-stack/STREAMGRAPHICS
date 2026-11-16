@@ -1,5 +1,6 @@
 // App state: GET /api/state + SSE /api/live/stream. Listeners: 'state', 'live', 'conn'.
 import { api } from './api.js';
+import { subscribeLive } from '../../shared/live-connection.js';
 
 const listeners = { state: new Set(), live: new Set(), conn: new Set() };
 
@@ -79,18 +80,16 @@ function setConn(ok) {
 }
 
 export function connectStream() {
-  const es = new EventSource('/api/live/stream');
-  es.addEventListener('open', () => {
-    const wasDown = !store.connected;
-    setConn(true);
-    if (wasDown && store.state) store.refresh();
+  return subscribeLive({
+    onConnection: ok => {
+      const wasDown = !store.connected;
+      setConn(ok);
+      if (ok && wasDown && store.state) store.refresh();
+    },
+    onState: () => store.refresh(),
+    onLive: setLive,
+    onEvent: (type, detail) => {
+      if (type === 'sync' || type === 'remote') window.dispatchEvent(new CustomEvent(`hll:${type}`, { detail }));
+    },
   });
-  es.addEventListener('error', () => setConn(false));
-  es.addEventListener('state', () => store.refresh());
-  es.addEventListener('sync', (ev) => { try { window.dispatchEvent(new CustomEvent('hll:sync', { detail: JSON.parse(ev.data) })); } catch { /* ignore a bad event */ } });
-  es.addEventListener('remote', (ev) => { try { window.dispatchEvent(new CustomEvent('hll:remote', { detail: JSON.parse(ev.data) })); } catch { /* ignore a bad event */ } });
-  es.addEventListener('live', (ev) => {
-    try { setLive(JSON.parse(ev.data)); } catch { /* ignore */ }
-  });
-  return es;
 }
