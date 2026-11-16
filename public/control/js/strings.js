@@ -4,6 +4,22 @@
 export const LANG = { code: 'en', locale: 'en-GB' };
 
 const en = {
+  remote: {
+    title: 'Online access (internet)',
+    intro: 'Turn on to share a link with colleagues on other networks. Keep this PC and the program running.',
+    enabled: 'Online access',
+    starting: 'Starting…', online: 'Online', offline: 'Offline', error: 'Error',
+    full: 'Colleagues · full control panel',
+    social: 'Social team · social graphics only',
+    overlay: 'Streaming PC or co-broadcaster · overlay for OBS',
+    newLink: 'New link',
+    rotateTitle: 'Create a new link?',
+    rotateBody: 'The old link and saved access for this role will stop working. Share the new link with anyone who needs it.',
+    lanTitle: 'Same network only',
+    socialEdition: 'Social edition',
+    socialGraphicsSub: 'Create and export graphics for social media',
+    socialBackgroundHint: 'Upload a background for social graphics or choose it for one graphic in the builder.',
+  },
   tournaments: {
     active: 'Active tournament',
     activeBadge: 'Active',
@@ -376,7 +392,9 @@ const en = {
     partner: 'Partner',
     logo: 'Logo',
     onGraphics: 'Show sponsor logos on graphics',
-    onGraphicsHint: 'A sponsor strip on every scene. The Sponsors scene works either way.',
+    onGraphicsHint: 'A sponsor strip on every live graphic. The Sponsors scene works either way.',
+    onSocial: 'Show sponsor logos on social posts',
+    onSocialHint: 'The "Powered by" line on Instagram / TikTok posts and stories.',
     turnedOn: 'Sponsors shown on graphics',
     turnedOff: 'Sponsors hidden from graphics',
     empty: 'No sponsors yet',

@@ -24,11 +24,13 @@ const baseName = (r) => r.name ?? String(r.file ?? '').split(/[\\/]/).pop();
 
 export function mount(root) {
   const s = store.state;
+  const social = store.access?.edition === 'social';
   const outField = copyField(s.settings.outputDir);
   const outPanel = panel(t('graphics.outputDir'),
     outField,
     h('p.panel-sub', t('graphics.outputHint')),
     h('p.field-hint', t('graphics.outputHint2')));
+  outPanel.hidden = social;
 
   const allBtn = btn(t('graphics.renderAll'), { kind: 'primary', iconName: 'layers' });
   const jobHost = h('div.job-host');
@@ -40,6 +42,7 @@ export function mount(root) {
     } catch (e) { toastError(e); }
   }));
   const allPanel = panel(t('graphics.renderAll'), h('p.panel-sub', t('graphics.renderAllSub')), h('div.panel-actions', allBtn), jobHost);
+  allPanel.hidden = social;
 
   const previewFrame = h('iframe.export-preview-frame', { title: t('graphics.preview'), scrolling: 'no' });
   const preview = h('div.export-preview.checker', previewFrame);
@@ -55,13 +58,14 @@ export function mount(root) {
     if (previewFrame.getAttribute('src') !== url) previewFrame.src = url;
     fitPreview();
   };
-  const builder = sceneBuilder({ onChange: paintPreview });
-  builder.set({ scene: 'schedule', params: { day: 'today' } });
+  const builder = sceneBuilder({ onChange: paintPreview, sceneFilter: scene => !social || scene.startsWith('social-') });
+  builder.set({ scene: social ? 'social-schedule' : 'schedule', params: { day: 'today' } });
   new ResizeObserver(fitPreview).observe(preview);
   const name = ctlText({ placeholder: t('graphics.fileNameHint'), mono: true });
   const renderBtn = btn(t('graphics.render'), { kind: 'primary', iconName: 'image' });
   const singleOut = h('div.grid.grid-renders');
   const saveBtn = btn(t('live.saveGraphic'), { iconName: 'plus' });
+  saveBtn.hidden = social;
   saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
     const cue = builder.get();
     try { await api.post('/api/graphics', { name: name.get() || cueText(cue.scene, cue.params), ...cue }); store.refresh(); toast(t('live.graphicSaved'), 'ok'); }
@@ -81,7 +85,7 @@ export function mount(root) {
   }));
   const singlePanel = panel(t('graphics.single'), h('p.panel-sub', t('graphics.singleSub')),
     builder.el, preview, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut);
-  const backgrounds = backgroundPanel();
+  const backgrounds = backgroundPanel({ socialOnly: social });
 
   // Every PNG in the output folder (also renders from earlier sessions), with the menu of the Live page.
   const refreshBtn = btn(t('graphics.refresh'), { size: 'sm', iconName: 'refresh', onclick: () => busy(refreshBtn, () => loadFiles()) });
@@ -97,7 +101,7 @@ export function mount(root) {
     h('div.files-head', h('div.files-titles', h('h2.panel-title', t('graphics.files')), filesSub)),
     filesMenu.el, filesMsg, filesGrid, filesMore);
 
-  root.append(sectionHead(t('graphics.title'), t('graphics.sub')),
+  root.append(sectionHead(t('graphics.title'), t(social ? 'remote.socialGraphicsSub' : 'graphics.sub')),
     h('div.graphics-grid', h('div.col', allPanel, backgrounds.el, outPanel), h('div.col', singlePanel)),
     filesPanel);
   els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, filesMenu, filesMore, backgrounds, paintPreview };
@@ -119,7 +123,7 @@ async function loadFiles() {
   loading = (async () => {
     try {
       const list = await api.get('/api/output');
-      files = Array.isArray(list) ? [...list].sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0)) : [];
+      files = Array.isArray(list) ? list.filter(f => store.access?.edition !== 'social' || fileType(f).startsWith('social-')).sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0)) : [];
       els?.filesMsg.classList.remove('is-error');
     } catch (e) {
       if (!files) files = [];

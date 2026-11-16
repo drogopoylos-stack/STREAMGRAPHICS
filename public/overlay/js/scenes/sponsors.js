@@ -2,6 +2,7 @@
 // Tile sizes adapt to how many sponsors there are; a logo that fails to load falls back to the name.
 import { h, plate, laurel } from '../ui.js';
 import { sceneHeader, leagueLine } from './common.js';
+import { isStreamSc } from '../stream-sc.js';
 
 const AREA_TOP = 292;
 const AREA_BOTTOM = 972;
@@ -44,12 +45,13 @@ export default {
     const rest = list.filter((s) => s.tier !== 'main').slice(0, 18);
     const avail = AREA_BOTTOM - AREA_TOP;
     const kids = [];
+    const sc = isStreamSc(data);
 
     if (!list.length) {
       kids.push(h('div', { class: 'sp-empty glass ticks', in: 'up', d: 520 },
         h('div', { class: 'sp-empty-s' }, 'Partnership announcements'),
         h('div', { class: 'sp-empty-row' }, laurel('l', 'sp-laurel'), h('div', { class: 'sp-empty-t display' }, 'Coming Soon'), laurel('r', 'sp-laurel')),
-        h('div', { class: 'sp-empty-g', lang: 'el' }, 'Γίνε μέρος του θρύλου')));
+        h('div', { class: 'sp-empty-g', lang: 'el' }, sc ? 'Become part of the legend' : 'Γίνε μέρος του θρύλου')));
     } else {
       const LABEL = 52;
       const SPACER = 34;
@@ -84,7 +86,7 @@ export default {
         league: data.league,
         kicker: leagueLine(data.league),
         title: 'Our Partners',
-        sub: 'Με την υποστήριξη των χορηγών μας',
+        sub: sc ? 'With the support of our partners' : 'Με την υποστήριξη των χορηγών μας',
         subLang: 'el',
       }),
       h('div', { class: 'sp-rule rule', in: 'wipec', d: 420, dur: 800 }),

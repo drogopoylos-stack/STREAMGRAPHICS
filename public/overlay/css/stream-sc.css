@@ -1,0 +1,432 @@
+/* HLL SUPER CUP 2027 look for the LIVE STREAM scenes (tournament setting streamStyle = 'supercup'), 1920×1080.
+   Same identity as the social posts (css/social-sc.css, docs/specs/SOCIAL-SUPERCUP.md): navy arena plate, gold
+   chamfered panels with the halftone glow, Sofia Sans Extra Condensed caps, white VS over a gold extrusion,
+   winner gold / loser dimmed. Adapted to 16:9: 104 px side margins (inside the OBS title-safe area), type sized
+   for 1080p.
+   Root: <div class="scene stream-sc s-<scene> …"> (js/stream-sc.js adds the class and the .ss-orn ornaments).
+   Every rule is scoped under .scene.stream-sc, so the classic look is untouched. The scenes keep their DOM:
+   design slots, layout elements, data-ref, .tlogo / .pphoto / .league-logo all stay.
+   The Graphics designer still wins: its fonts are inline !important, its box styles (graphic-design.css) are more
+   specific, and its per-text size is re-applied at the end of this file. */
+
+.scene.stream-sc {
+  --gold: #fdc204; --gold-hi: #ffe27a; --gold-deep: #e39a00; --gold-rgb: 253, 194, 4;
+  --navy-0: #030820; --navy-1: #06123a; --navy-2: #0c2160; --royal: #1534b4; --royal-deep: #0b1f7a;
+  --mute: #b9c6ee; --ink: #071640;
+  --f-display: 'Sofia Sans Extra Condensed Variable', 'Sofia Sans Extra Condensed', 'Fira Sans Extra Condensed', sans-serif;
+  --f-ui: 'Sofia Sans Variable', 'Sofia Sans', 'Fira Sans Condensed', sans-serif;
+  --f-num: 'Sofia Sans Extra Condensed Variable', 'Sofia Sans Extra Condensed', 'Fira Sans Extra Condensed', sans-serif;
+  --f-serif: var(--f-display);
+  --hair: rgba(253, 194, 4, .35);
+  --ss-panel: linear-gradient(180deg, rgba(14, 38, 110, .9), rgba(5, 14, 46, .93));
+  --ss-bar: linear-gradient(90deg, rgba(5, 13, 44, .97) 0%, rgba(13, 33, 96, .96) 50%, rgba(5, 13, 44, .97) 100%);
+  --ss-dots: radial-gradient(circle, rgba(255, 206, 40, .5) 1.3px, rgba(0, 0, 0, 0) 1.9px) 0 0 / 8px 8px;
+  --ss-glow: linear-gradient(180deg, rgba(253, 194, 4, 0) 30%, rgba(253, 194, 4, .24) 100%);
+  --ss-cut: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  --ss-cut-in: polygon(17px 0, 100% 0, 100% calc(100% - 13px), calc(100% - 13px) 100%, 0 100%, 0 17px);
+  color: #fff;
+}
+.scene.stream-sc .display { font-weight: 800; letter-spacing: .02em; line-height: .9; }
+.scene.stream-sc .kicker { font: 700 20px/1 var(--f-ui); letter-spacing: .3em; color: var(--gold); }
+
+/* ---------- plate: veil for the header and the panels ---------- */
+.scene.stream-sc .plate-img { filter: none; background-position: center; }
+.scene.stream-sc .plate-shade { background:
+  linear-gradient(100deg, rgba(3, 8, 32, .62) 0%, rgba(3, 8, 32, .25) 32%, rgba(3, 8, 32, 0) 52%) 0 0 / 100% 300px no-repeat,
+  radial-gradient(ellipse 64% 52% at 50% 58%, rgba(3, 8, 32, .5), rgba(3, 8, 32, 0) 100%),
+  linear-gradient(180deg, rgba(3, 8, 32, .25) 0%, rgba(3, 8, 32, 0) 28%, rgba(3, 8, 32, 0) 72%, rgba(3, 8, 32, .4) 100%); }
+.scene.stream-sc .plate[data-bga] { --bga-ember: 253, 194, 4; --bga-light: 255, 226, 150; }
+.scene.stream-sc :is(.r-vignette, .mu-shade, .wait-glow) { display: none; }
+
+/* ---------- ornaments (js/stream-sc.js): gold corner wedges + hairlines; never over content ---------- */
+.scene.stream-sc .ss-orn { position: absolute; inset: 0; pointer-events: none; }
+.scene.stream-sc .ss-wedge { position: absolute; width: 0; height: 0; filter: drop-shadow(0 0 16px rgba(253, 194, 4, .5)); }
+.scene.stream-sc .ss-wedge.tl { left: 0; top: 0; border-top: 64px solid var(--gold); border-right: 54px solid transparent; }
+.scene.stream-sc .ss-wedge.br { right: 0; bottom: 0; border-bottom: 96px solid var(--gold); border-left: 82px solid transparent; }
+.scene.stream-sc .ss-hair { position: absolute; height: 2px; transform-origin: 0 50%; transform: rotate(-50deg);
+  background: linear-gradient(90deg, rgba(253, 194, 4, 0), rgba(255, 214, 90, .95) 45%, rgba(253, 194, 4, 0)); }
+
+/* ---------- classic ornaments that are not part of this identity ---------- */
+.scene.stream-sc :is(.laurel, .meander) { display: none; }
+.scene.stream-sc .ticks::before, .scene.stream-sc .ticks::after { display: none; }
+
+/* ---------- shared components ---------- */
+.scene.stream-sc .rule { height: 3px; background: linear-gradient(90deg, var(--gold) 0%, rgba(253, 194, 4, .55) 34%, rgba(253, 194, 4, 0) 88%); }
+.scene.stream-sc .glass { background: var(--ss-panel); box-shadow: inset 0 3px 0 var(--gold), inset 0 0 0 1px rgba(253, 194, 4, .3);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 22px 100%, 0 calc(100% - 22px)); }
+.scene.stream-sc.bg-off .glass { background: linear-gradient(180deg, rgba(14, 38, 110, .96), rgba(5, 14, 46, .97)); }
+.scene.stream-sc .league-logo img { filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .55)); }
+.scene.stream-sc .league-mono { font-family: var(--f-display); color: var(--gold); }
+.scene.stream-sc .tlogo.is-dark > img { filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, .85)) drop-shadow(0 0 10px rgba(160, 190, 255, .55)) drop-shadow(0 6px 10px rgba(0, 0, 0, .5)); }
+.scene.stream-sc .tlogo > svg.mono text { font-family: 'Sofia Sans Extra Condensed Variable', sans-serif; }
+
+/* VS: white face over a gold extrusion, slanted (the social VS mark, in type so the designer can still edit it) */
+.scene.stream-sc :is(.vs-disc > span, .sv-vs, .sc-vs, .tv-centre > .display, .mu-ph-vs, .wait-vs) {
+  display: inline-block; font-family: var(--f-display); font-style: normal; font-weight: 900; letter-spacing: 0; color: #fff;
+  transform: skewX(-12deg); text-shadow: .065em .055em 0 var(--gold); }
+
+/* score: winner gold, loser dimmed; a live score stays white */
+.scene.stream-sc .score { font-family: var(--f-num); font-weight: 900; }
+.scene.stream-sc .score .sc { color: #fff; }
+.scene.stream-sc .score:has(.sc.lose) .sc:not(.lose) { color: var(--gold); text-shadow: 0 0 22px rgba(253, 194, 4, .35); }
+.scene.stream-sc .score .sc.lose { color: rgba(255, 255, 255, .42); }
+.scene.stream-sc .score .sc-sep { width: .2em; height: .07em; margin: 0 .2em; border-radius: 0; background: rgba(255, 255, 255, .45); }
+
+.scene.stream-sc .badge { font-family: var(--f-ui); font-weight: 800; letter-spacing: .16em; border-radius: 4px; }
+.scene.stream-sc .badge-live { background: #ff2b3a; color: #fff; box-shadow: 0 0 24px rgba(255, 43, 58, .55); }
+.scene.stream-sc .badge-final { color: var(--ink); background: var(--gold); box-shadow: none; border-radius: 0; padding: .38em .95em .34em;
+  clip-path: polygon(.45em 0, 100% 0, calc(100% - .45em) 100%, 0 100%); }
+.scene.stream-sc .tag { font: 800 26px/1 var(--f-display); letter-spacing: .05em; color: var(--ink); background: var(--gold); border-radius: 0; padding: 6px 16px 4px;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+.scene.stream-sc .flag { font-family: var(--f-ui); }
+.scene.stream-sc .dotted .sep { width: 2px; height: .8em; transform: none; background: rgba(185, 198, 238, .45); opacity: 1; }
+
+/* crest → chamfered gold plate with a navy well (the social's big logo plate) */
+.scene.stream-sc .crest { filter: drop-shadow(0 16px 28px rgba(0, 0, 0, .5)); }
+.scene.stream-sc .crest-ring { border-radius: 0; box-shadow: none; background: linear-gradient(160deg, var(--gold-hi), var(--gold) 40%, var(--gold-deep));
+  clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%); }
+.scene.stream-sc .crest-ring::before { inset: 3px; border: 0; border-radius: 0; background: radial-gradient(circle at 50% 42%, #2348b8 0%, #0e2470 48%, #050d2e 100%);
+  clip-path: polygon(calc(10% - 1px) 0, 100% 0, 100% calc(90% + 1px), calc(90% + 1px) 100%, 0 100%, 0 calc(10% - 1px)); }
+.scene.stream-sc .crest-ring::after { inset: 3px; border-radius: 0; box-shadow: none; background: var(--ss-dots), var(--ss-glow);
+  clip-path: polygon(calc(10% - 1px) 0, 100% 0, 100% calc(90% + 1px), calc(90% + 1px) 100%, 0 100%, 0 calc(10% - 1px));
+  -webkit-mask-image: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, .8)); mask-image: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, .8)); }
+.scene.stream-sc :is(.vs-b, .sv-b, .mu-art-b) .crest-ring { transform: scaleX(-1); }
+.scene.stream-sc .crest-logo { inset: 14%; }
+
+/* player photo placeholder: quiet navy silhouette */
+.scene.stream-sc .pphoto.is-sil > .ph-sil { opacity: .7; }
+
+/* ======================================================================
+   HEADER (schedule, standings, brackets, sponsors, format, text line-ups)
+   ====================================================================== */
+.scene.stream-sc .hdr { gap: 34px; }
+.scene.stream-sc .hdr-logo { width: 176px; height: 176px; margin-left: -16px; }
+.scene.stream-sc .hdr-text { gap: 12px; }
+.scene.stream-sc .hdr-kicker { display: flex; align-items: center; gap: 16px; font-size: 21px; letter-spacing: .32em; }
+.scene.stream-sc .hdr-kicker::before { content: ''; flex: none; width: 46px; height: 3px; background: var(--gold); }
+.scene.stream-sc .hdr-title { font-size: 104px; line-height: .86; text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 26px rgba(0, 0, 0, .45); }
+.scene.stream-sc .hdr-sub { font: 700 26px/1.1 var(--f-ui); font-style: normal; letter-spacing: .2em; text-transform: uppercase; color: var(--mute); }
+.scene.stream-sc.bg-off .hdr::before { background: linear-gradient(90deg, rgba(6, 18, 58, .94), rgba(6, 18, 58, .88) 60%, rgba(6, 18, 58, .8));
+  box-shadow: inset 0 -3px 0 var(--gold), inset 0 0 0 1px rgba(253, 194, 4, .3); }
+
+/* ======================================================================
+   SCHEDULE — rows are the social match bar: gold chamfered frame, navy fill, halftone glow, thick gold base
+   ====================================================================== */
+.scene.stream-sc .srow { overflow: visible; background: var(--gold); box-shadow: none; clip-path: var(--ss-cut); }
+.scene.stream-sc .srow::before { inset: 2px 2px 6px 2px; width: auto; z-index: 0; background: var(--ss-bar); clip-path: var(--ss-cut-in); }
+.scene.stream-sc .srow::after { content: ''; position: absolute; inset: 2px 2px 6px 2px; z-index: 0; pointer-events: none; background: var(--ss-dots), var(--ss-glow);
+  clip-path: var(--ss-cut-in); -webkit-mask-image: linear-gradient(180deg, transparent 22%, rgba(0, 0, 0, .9)); mask-image: linear-gradient(180deg, transparent 22%, rgba(0, 0, 0, .9)); }
+.scene.stream-sc .srow > * { position: relative; z-index: 1; }
+.scene.stream-sc.bg-off .srow::before { background: linear-gradient(90deg, rgba(5, 13, 44, .99), rgba(13, 33, 96, .98) 50%, rgba(5, 13, 44, .99)); }
+.scene.stream-sc .srow.is-live { background: #ff2b3a; box-shadow: none; }
+.scene.stream-sc .srow.is-live::before { background: linear-gradient(90deg, rgba(120, 14, 30, .95), rgba(13, 33, 96, .96) 34%, rgba(5, 13, 44, .97)); }
+.scene.stream-sc .sc-time { background: none; box-shadow: inset -2px 0 0 rgba(253, 194, 4, .45); font-family: var(--f-num); font-weight: 800; color: var(--gold); }
+.scene.stream-sc .is-done .sc-time { color: rgba(253, 194, 4, .62); }
+.scene.stream-sc .sc-date-small { font: 700 17px/1 var(--f-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.scene.stream-sc .sc-name { font-weight: 800; letter-spacing: .03em; text-shadow: 0 3px 0 rgba(0, 0, 0, .35); }
+.scene.stream-sc .sc-mid { background: none; }
+.scene.stream-sc .sc-vs { font-size: calc(var(--rh) * .46 + 6px); }
+.scene.stream-sc .sc-final { font-family: var(--f-ui); font-weight: 800; color: var(--gold); }
+.scene.stream-sc .sc-info { box-shadow: inset 2px 0 0 rgba(253, 194, 4, .45); }
+.scene.stream-sc .sc-stage { font-family: var(--f-ui); font-weight: 700; letter-spacing: .12em; color: var(--mute); }
+.scene.stream-sc .sc-bo { font-family: var(--f-ui); font-weight: 800; letter-spacing: .14em; color: var(--gold); box-shadow: inset 0 0 0 2px rgba(253, 194, 4, .7); }
+.scene.stream-sc .sch-empty { padding: 60px 70px 58px; }
+.scene.stream-sc :is(.sch-empty-k, .sp-empty-s, .brk-final-k) { font-family: var(--f-ui); font-weight: 800; color: var(--gold); }
+.scene.stream-sc :is(.sch-empty-t, .sp-empty-t, .brk-final-t) { color: var(--gold);
+  background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 40%, var(--gold) 62%, var(--gold-deep) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.scene.stream-sc :is(.sch-empty-s, .sp-empty-g, .brk-final-s, .mu-nostats) { font: 700 24px/1.3 var(--f-ui); font-style: normal; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
+
+/* ======================================================================
+   TEXT LINE-UPS (rosterStyle text: Match line-ups + Team roster) — the social roster table:
+   gold role column, royal-blue name column, gold separators and frame
+   ====================================================================== */
+.scene.stream-sc .tl-row { gap: 0; padding: 0 22px 0 0; border: 0; background: linear-gradient(90deg, rgba(21, 52, 180, .82), rgba(14, 38, 140, .8) 60%, rgba(11, 31, 122, .84)); }
+.scene.stream-sc .tl-row + .tl-row { margin-top: 0; border-top: 3px solid var(--gold); }
+.scene.stream-sc :is(.tr-rows, .tv-rows) { border: 3px solid var(--gold); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.scene.stream-sc .tl-role { align-self: stretch; gap: 12px; margin-right: 26px; padding-left: 20px;
+  font: 800 25px/1 var(--f-display); letter-spacing: .06em; color: var(--ink); background: linear-gradient(180deg, var(--gold-hi) -40%, var(--gold) 30%, #f2b300 100%); }
+.scene.stream-sc .tl-row + .tl-row .tl-role { box-shadow: inset 0 3px 0 rgba(7, 22, 64, .25); }
+.scene.stream-sc .tl-role .role-ic { color: var(--ink); }
+.scene.stream-sc .tl-nick { font-weight: 800; letter-spacing: .03em; text-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+.scene.stream-sc .tl-captain { border: 0; padding: 6px 9px 4px; font: 800 18px/1 var(--f-ui); color: var(--ink); background: var(--gold); }
+.scene.stream-sc .tl-bench { border-top: 2px solid rgba(253, 194, 4, .5); }
+.scene.stream-sc .tl-bench-label { font-family: var(--f-ui); font-weight: 800; letter-spacing: .2em; color: var(--gold); }
+.scene.stream-sc .tl-bench-names { font-family: var(--f-ui); font-weight: 700; color: #fff; }
+/* team logo well: navy plate in a gold chamfered frame (two layers behind the logo) */
+.scene.stream-sc :is(.tv-logo, .tr-logo) { position: relative; isolation: isolate; filter: none; }
+.scene.stream-sc :is(.tv-logo, .tr-logo)::before, .scene.stream-sc :is(.tv-logo, .tr-logo)::after { content: ''; position: absolute; z-index: -1; }
+.scene.stream-sc :is(.tv-logo, .tr-logo)::before { inset: 0; background: linear-gradient(160deg, var(--gold-hi), var(--gold) 40%, var(--gold-deep));
+  clip-path: polygon(14% 0, 100% 0, 100% 86%, 86% 100%, 0 100%, 0 14%); }
+.scene.stream-sc :is(.tv-logo, .tr-logo)::after { inset: 3px; background: radial-gradient(circle at 50% 42%, #2348b8 0%, #0e2470 48%, #050d2e 100%);
+  clip-path: polygon(calc(14% - 1px) 0, 100% 0, 100% calc(86% + 1px), calc(86% + 1px) 100%, 0 100%, 0 calc(14% - 1px)); }
+.scene.stream-sc .tv-b .tv-logo::before { clip-path: polygon(0 0, 86% 0, 100% 14%, 100% 100%, 14% 100%, 0 86%); }
+.scene.stream-sc .tv-b .tv-logo::after { clip-path: polygon(0 0, calc(86% + 1px) 0, 100% calc(14% - 1px), 100% 100%, calc(14% - 1px) 100%, 0 calc(86% + 1px)); }
+/* a place without a team yet (TBD, Winner 1-1): dashed navy shield, no team colour */
+.scene.stream-sc .tlogo > svg.mono[data-icon-slot]:has(> text) path:first-of-type { fill: rgba(6, 18, 58, .92); stroke: rgba(185, 198, 238, .6); stroke-width: 3; stroke-dasharray: 7 5; }
+.scene.stream-sc .tlogo > svg.mono[data-icon-slot]:has(> text) path:nth-of-type(2) { display: none; }
+.scene.stream-sc .tlogo > svg.mono[data-icon-slot]:has(> text) text { fill: var(--mute); }
+
+/* Match line-ups */
+.scene.stream-sc .tv-team { gap: 24px; padding: 0 0 22px; }
+.scene.stream-sc .tv-logo { width: 124px; height: 124px; padding: 17px; }
+.scene.stream-sc .tv-tag { font: 800 70px/.9 var(--f-display); letter-spacing: .03em; color: var(--gold); }
+.scene.stream-sc .tv-name { font: 700 20px/1.2 var(--f-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--mute); margin-top: 10px; }
+.scene.stream-sc .tv-rows .tl-row { height: 80px; padding: 0 20px 0 0; gap: 0; }
+.scene.stream-sc .tv-rows .tl-role { width: 178px; font-size: 24px; }
+.scene.stream-sc .tv-rows .tl-nick { font-size: 46px; }
+.scene.stream-sc .tv-centre { left: 860px; width: 200px; top: 560px; color: #fff; font-size: 132px; }
+.scene.stream-sc .tv-centre > .display { font-size: 132px; line-height: 1; }
+.scene.stream-sc .tv-score { font-family: var(--f-num); font-weight: 900; font-size: 92px; gap: 0; }
+
+/* Team roster */
+.scene.stream-sc .tr-brand { top: 318px; }
+.scene.stream-sc .tr-logo { width: 300px; height: 300px; padding: 44px; margin-bottom: 26px; }
+.scene.stream-sc .tr-tag { font: 800 110px/.86 var(--f-display); letter-spacing: .03em; color: var(--gold);
+  text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 22px rgba(0, 0, 0, .45); }
+.scene.stream-sc .tr-label { margin-top: 18px; font: 700 20px/1 var(--f-ui); letter-spacing: .3em; color: var(--mute); }
+.scene.stream-sc .tr-columns { grid-template-columns: 236px 1fr; padding: 0 0 14px 4px; font: 800 18px/1 var(--f-ui); letter-spacing: .3em; color: var(--gold); }
+.scene.stream-sc .tr-rows .tl-row { height: 98px; }
+.scene.stream-sc .tr-rows .tl-role { width: 236px; font-size: 30px; }
+.scene.stream-sc .tr-rows .tl-role .role-ic { width: 34px; height: 34px; }
+.scene.stream-sc .tr-rows .tl-nick { font-size: 58px; }
+
+/* ======================================================================
+   VERSUS (photos layout; without photos the SUPER CUP style uses the line-ups above)
+   ====================================================================== */
+.scene.stream-sc.s-versus .plate-shade { background:
+  linear-gradient(180deg, rgba(3, 8, 32, .5) 0%, rgba(3, 8, 32, .1) 18%, rgba(3, 8, 32, .05) 45%, rgba(3, 8, 32, .55) 64%, rgba(3, 8, 32, .82) 100%); }
+.scene.stream-sc .vs-stage { font-weight: 800; color: #fff; letter-spacing: .05em; text-shadow: 0 4px 0 rgba(4, 10, 40, .55); }
+.scene.stream-sc .vs-stage-row { gap: 22px; }
+.scene.stream-sc .vs-stage-row::before, .scene.stream-sc .vs-stage-row::after { content: ''; flex: none; width: 64px; height: 3px; background: linear-gradient(90deg, rgba(253, 194, 4, 0), var(--gold)); }
+.scene.stream-sc .vs-stage-row::after { transform: scaleX(-1); }
+.scene.stream-sc .vs-when { font: 700 24px/1 var(--f-ui); letter-spacing: .2em; color: var(--mute); }
+.scene.stream-sc.bg-off .vs-meta { background: var(--ss-panel); box-shadow: inset 0 3px 0 var(--gold); }
+.scene.stream-sc .vs-name { font-weight: 800; text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 26px rgba(0, 0, 0, .6); }
+.scene.stream-sc .vs-record { font-family: var(--f-num); font-weight: 800; color: var(--mute); }
+.scene.stream-sc .vs-side-bg { background: var(--ss-panel); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .3); border-top: 3px solid var(--gold) !important; }
+.scene.stream-sc .vs-disc { border-radius: 0; background: radial-gradient(circle at 50% 42%, #2348b8 0%, #0e2470 48%, #050d2e 100%);
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 60px rgba(45, 91, 255, .45); clip-path: polygon(14% 0, 100% 0, 100% 86%, 86% 100%, 0 100%, 0 14%); }
+.scene.stream-sc .vs-disc span { margin: 0; font-size: 104px; }
+.scene.stream-sc.mode-simple .vs-disc span { font-size: 124px; }
+.scene.stream-sc .vs-scorewrap { background: radial-gradient(closest-side, rgba(3, 8, 32, .8), rgba(3, 8, 32, .5) 60%, transparent); }
+.scene.stream-sc.bg-off .vs-scorewrap { background: var(--ss-panel); box-shadow: inset 0 3px 0 var(--gold); }
+.scene.stream-sc .vs-ltitle { font: 800 18px/1 var(--f-ui); letter-spacing: .32em; color: var(--gold); }
+.scene.stream-sc .vs-ltitle::before { background: linear-gradient(90deg, transparent, rgba(253, 194, 4, .7)); }
+.scene.stream-sc .vs-ltitle::after { background: linear-gradient(90deg, rgba(253, 194, 4, .7), transparent); }
+.scene.stream-sc .mcard { background: var(--ss-panel); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .3), 0 18px 40px rgba(0, 0, 0, .5); }
+.scene.stream-sc .mc-glow { background: radial-gradient(80% 50% at 50% 34%, rgba(var(--side), .3), transparent 72%); }
+.scene.stream-sc .mc-info { background: linear-gradient(180deg, transparent, rgba(5, 14, 46, .88) 40%, rgba(5, 14, 46, .98)); }
+.scene.stream-sc .mc-role { font-family: var(--f-ui); font-weight: 800; color: var(--gold); }
+
+/* ======================================================================
+   LOGO VS (simple-vs): two gold-framed bars, logo plates, VS mark or the score in the middle
+   ====================================================================== */
+.scene.stream-sc.s-simple-vs .plate-shade { background: radial-gradient(70% 60% at 50% 52%, rgba(3, 8, 32, .5), rgba(3, 8, 32, .12) 80%); }
+.scene.stream-sc .sv-kicker { top: 318px; gap: 22px; padding: 10px 0; font: 800 46px/1 var(--f-display); letter-spacing: .06em; color: #fff;
+  text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 22px rgba(0, 0, 0, .45); }
+.scene.stream-sc .sv-kicker::before, .scene.stream-sc .sv-kicker::after { content: ''; flex: none; width: 80px; height: 3px; background: linear-gradient(90deg, rgba(253, 194, 4, 0), var(--gold)); }
+.scene.stream-sc .sv-kicker::after { transform: scaleX(-1); }
+.scene.stream-sc.bg-off .sv-kicker { padding: 12px 26px; background: var(--ss-panel); box-shadow: inset 0 3px 0 var(--gold); }
+.scene.stream-sc .sv-wing-bg { box-shadow: none; background: var(--gold); }
+.scene.stream-sc .sv-a .sv-wing-bg { clip-path: polygon(26px 0, 100% 0, 100% 100%, 0 100%, 0 26px); }
+.scene.stream-sc .sv-b .sv-wing-bg { clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%); }
+.scene.stream-sc .sv-wing-bg::before { content: ''; position: absolute; inset: 2px 2px 8px; background: var(--ss-bar); }
+.scene.stream-sc .sv-a .sv-wing-bg::before { clip-path: polygon(25px 0, 100% 0, 100% 100%, 0 100%, 0 25px); background: linear-gradient(90deg, rgba(5, 13, 44, .97), rgba(13, 33, 96, .96)); }
+.scene.stream-sc .sv-b .sv-wing-bg::before { clip-path: polygon(0 0, calc(100% - 25px) 0, 100% 25px, 100% 100%, 0 100%); background: linear-gradient(270deg, rgba(5, 13, 44, .97), rgba(13, 33, 96, .96)); }
+.scene.stream-sc .sv-wing-bg::after { left: 2px; right: 2px; top: 2px; bottom: 8px; height: auto; opacity: 1; background: var(--ss-dots), var(--ss-glow);
+  -webkit-mask-image: linear-gradient(180deg, transparent 25%, rgba(0, 0, 0, .9)); mask-image: linear-gradient(180deg, transparent 25%, rgba(0, 0, 0, .9)); }
+.scene.stream-sc .sv-crest { width: 188px; height: 188px; }
+.scene.stream-sc .sv-tag { font-weight: 800; font-size: 128px; letter-spacing: .03em; text-shadow: 0 4px 0 rgba(0, 0, 0, .35); }
+.scene.stream-sc .sv-name { font: 700 24px/1.1 var(--f-ui); letter-spacing: .16em; color: var(--mute); }
+.scene.stream-sc .sv-mid { width: 300px; margin-left: -150px; top: -30px; bottom: -30px; }
+.scene.stream-sc .sv-mid::before { background: linear-gradient(160deg, var(--gold-hi), var(--gold) 40%, var(--gold-deep)); clip-path: polygon(14% 0, 86% 0, 100% 14%, 100% 86%, 86% 100%, 14% 100%, 0 86%, 0 14%); }
+.scene.stream-sc .sv-mid::after { inset: 3px; background: radial-gradient(circle at 50% 42%, #2348b8 0%, #0e2470 48%, #050d2e 100%);
+  clip-path: polygon(calc(14% - 1px) 0, calc(86% + 1px) 0, 100% calc(14% - 1px), 100% calc(86% + 1px), calc(86% + 1px) 100%, calc(14% - 1px) 100%, 0 calc(86% + 1px), 0 calc(14% - 1px)); }
+.scene.stream-sc .sv-vs { margin: 0 0 0 -8px; font-size: 150px; text-shadow: .065em .055em 0 var(--gold); }
+.scene.stream-sc .sv-score { font-size: 132px; }
+/* a played match: the loser's tag, name and logo step back */
+.scene.stream-sc .sv-band:has(.sc-a.lose) .sv-a :is(.sv-tag, .sv-name, .crest-logo),
+.scene.stream-sc .sv-band:has(.sc-b.lose) .sv-b :is(.sv-tag, .sv-name, .crest-logo) { opacity: .5; }
+.scene.stream-sc:has(.vs-score .sc-a.lose) .vs-a :is(.vs-name, .crest-logo),
+.scene.stream-sc:has(.vs-score .sc-b.lose) .vs-b :is(.vs-name, .crest-logo),
+.scene.stream-sc:has(.tv-score .sc-a.lose) .tv-a .tv-team,
+.scene.stream-sc:has(.tv-score .sc-b.lose) .tv-b .tv-team { opacity: .5; }
+.scene.stream-sc .sv-meta { top: 700px; gap: 20px; padding: 14px 34px 16px; background: linear-gradient(180deg, #071640, #0d2468); box-shadow: none;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 16px 100%); }
+.scene.stream-sc .sv-meta::before { content: ''; position: absolute; inset: 0; border: 2px solid rgba(253, 194, 4, .9); border-top: 0; pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 16px 100%); }
+.scene.stream-sc .sv-when { font: 700 28px/1 var(--f-ui); letter-spacing: .14em; color: #fff; }
+.scene.stream-sc .sv-badge { font-size: 20px; }
+
+/* ======================================================================
+   ROSTER (photos layout; without photos the SUPER CUP style uses the text roster)
+   ====================================================================== */
+.scene.stream-sc.s-roster .plate-shade { background:
+  linear-gradient(180deg, rgba(3, 8, 32, .7) 0%, rgba(3, 8, 32, .3) 26%, rgba(3, 8, 32, .12) 45%, rgba(3, 8, 32, .55) 100%); }
+.scene.stream-sc .r-season { border-left-color: rgba(253, 194, 4, .5); color: var(--mute); }
+.scene.stream-sc .r-season:empty { display: none; }
+.scene.stream-sc .r-name { font-weight: 800; text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 26px rgba(0, 0, 0, .6); }
+.scene.stream-sc .r-record { font-family: var(--f-num); color: var(--gold); }
+.scene.stream-sc .r-league { font-family: var(--f-ui); font-weight: 700; color: var(--mute); }
+.scene.stream-sc.bg-off .r-head::before { background: var(--ss-panel); box-shadow: inset 0 3px 0 var(--gold); }
+.scene.stream-sc .pcard { background: var(--ss-panel); box-shadow: inset 0 0 0 2px rgba(253, 194, 4, .55), 0 24px 50px rgba(0, 0, 0, .55);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%); }
+.scene.stream-sc .pc-glow { background: radial-gradient(70% 45% at 50% 32%, rgba(45, 91, 255, .4), transparent 70%), linear-gradient(180deg, transparent 60%, rgba(253, 194, 4, .1)); }
+.scene.stream-sc .pc-top { background: linear-gradient(180deg, var(--gold-hi) -40%, var(--gold) 30%, #f2b300 100%); box-shadow: none; }
+.scene.stream-sc .pc-role { font: 800 25px/1 var(--f-display); letter-spacing: .08em; color: var(--ink); }
+.scene.stream-sc .pc-role .role-ic { color: var(--ink); filter: none; }
+.scene.stream-sc .pc-info { background: linear-gradient(180deg, transparent 0%, rgba(5, 14, 46, .82) 38%, rgba(5, 14, 46, .97) 100%); }
+.scene.stream-sc .pc-info::before { background: var(--gold); }
+.scene.stream-sc .pc-name { font-family: var(--f-ui); font-weight: 700; color: var(--mute); }
+.scene.stream-sc .cap { font-family: var(--f-display); color: var(--ink); background: var(--gold); }
+.scene.stream-sc .pcard-simple .pc-mark .role-ic { color: rgba(253, 194, 4, .9); }
+.scene.stream-sc .bench-label { background: linear-gradient(180deg, var(--gold-hi) -40%, var(--gold) 30%, #f2b300 100%); }
+.scene.stream-sc .bench-label span { font-family: var(--f-display); font-weight: 800; color: var(--ink); }
+.scene.stream-sc .bench-label small { font-family: var(--f-ui); color: var(--ink); }
+.scene.stream-sc .chip { background: rgba(21, 52, 180, .35); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .3); }
+.scene.stream-sc .chip-role { font-family: var(--f-ui); color: var(--gold); }
+.scene.stream-sc .chip-photo { background: radial-gradient(80% 70% at 50% 30%, rgba(45, 91, 255, .35), transparent 75%); }
+
+/* ======================================================================
+   MATCHUP
+   ====================================================================== */
+.scene.stream-sc.s-matchup .plate-shade { background:
+  linear-gradient(180deg, rgba(3, 8, 32, .5) 0%, rgba(3, 8, 32, .08) 22%, rgba(3, 8, 32, .1) 55%, rgba(3, 8, 32, .7) 82%, rgba(3, 8, 32, .88) 100%); }
+.scene.stream-sc .mu-title { font-weight: 800; text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 26px rgba(0, 0, 0, .6); }
+.scene.stream-sc .mu-role { color: var(--gold); }
+.scene.stream-sc.bg-off .mu-head { background: var(--ss-panel); box-shadow: inset 0 3px 0 var(--gold); }
+.scene.stream-sc .mu-team { font-family: var(--f-ui); font-weight: 800; color: var(--mute); }
+.scene.stream-sc .mu-nick { font-weight: 800; text-shadow: 0 4px 0 rgba(4, 10, 40, .55), 0 10px 26px rgba(0, 0, 0, .7); }
+.scene.stream-sc .mu-name { font-family: var(--f-ui); font-weight: 700; color: var(--mute); }
+.scene.stream-sc .mu-card-a::before { background: var(--accent); }
+.scene.stream-sc .mu-card-b::before { background: var(--gold); }
+.scene.stream-sc.bg-off .mu-card { background: var(--ss-panel); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .3); }
+.scene.stream-sc .mu-champs-l { font-family: var(--f-ui); font-weight: 800; color: var(--gold); }
+.scene.stream-sc .champ { background: #06123a; box-shadow: 0 0 0 2px var(--gold), 0 8px 20px rgba(0, 0, 0, .5); }
+.scene.stream-sc .champ-g { font-family: var(--f-num); background: var(--ink); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .7); }
+.scene.stream-sc .mu-panel-head { box-shadow: 0 2px 0 rgba(253, 194, 4, .45); }
+.scene.stream-sc .mu-ph { font-family: var(--f-display); font-weight: 800; }
+.scene.stream-sc .mu-ph-vs { font-size: 34px; }
+.scene.stream-sc .mv { font-family: var(--f-num); font-weight: 800; font-size: 40px; color: rgba(255, 255, 255, .55); }
+.scene.stream-sc .win-a .mv-a, .scene.stream-sc .win-b .mv-b { color: var(--gold); }
+.scene.stream-sc .ml { font-family: var(--f-ui); font-weight: 800; letter-spacing: .2em; color: var(--mute); }
+.scene.stream-sc .mbar-half { background: rgba(185, 198, 238, .1); }
+.scene.stream-sc .mbar i { background: rgba(185, 198, 238, .35); }
+.scene.stream-sc .win-a .mbar-a i { background: linear-gradient(90deg, rgba(45, 91, 255, .6), #4f7bff); box-shadow: 0 0 14px rgba(45, 91, 255, .6); }
+.scene.stream-sc .win-b .mbar-b i { background: linear-gradient(90deg, var(--gold), rgba(253, 194, 4, .7)); box-shadow: 0 0 14px rgba(253, 194, 4, .5); }
+.scene.stream-sc .mu-h2h { box-shadow: 0 -2px 0 rgba(253, 194, 4, .45); }
+.scene.stream-sc .mu-h2h-l { font-family: var(--f-ui); font-weight: 800; color: var(--gold); }
+.scene.stream-sc .mu-h2h-v { font-family: var(--f-display); font-weight: 800; }
+
+/* ======================================================================
+   STANDINGS (inline grid from standings.js: colours and rules are re-set here)
+   ====================================================================== */
+.scene.stream-sc .standings-table { border: 3px solid var(--gold); background: linear-gradient(180deg, rgba(5, 14, 46, .9), rgba(5, 14, 46, .94)); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.scene.stream-sc .standings-columns { padding: 14px 0 !important; font: 800 20px/1 var(--f-ui) !important; letter-spacing: .2em; color: var(--ink) !important;
+  background: linear-gradient(180deg, var(--gold-hi) -40%, var(--gold) 30%, #f2b300 100%); }
+.scene.stream-sc .standings-row { font-family: var(--f-num); font-weight: 800; border-bottom: 2px solid rgba(253, 194, 4, .28) !important; background: transparent !important; }
+.scene.stream-sc .standings-row:nth-child(even) { background: rgba(21, 52, 180, .28) !important; }
+.scene.stream-sc .standings-row:last-child { border-bottom: 0 !important; }
+.scene.stream-sc .standings-row > span:first-child { color: var(--gold); }
+.scene.stream-sc .standings-name { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.scene.stream-sc .standings-points { color: var(--gold) !important; font-family: var(--f-num); font-weight: 900; }
+
+/* ======================================================================
+   BRACKETS: native (single / double elimination), GSL, ghost, embed — the social bracket card
+   ====================================================================== */
+.scene.stream-sc .nb-lines { color: rgba(253, 194, 4, .8); }
+.scene.stream-sc .nb-round { color: #fff; font: 800 26px/1 var(--f-display); letter-spacing: .06em; border-bottom: 3px solid var(--gold); }
+.scene.stream-sc .nb-round > span { color: var(--gold); font: 800 20px/1 var(--f-num); }
+.scene.stream-sc .nb-match { border: 0; border-radius: 0; background: linear-gradient(90deg, rgba(14, 38, 110, .94), rgba(6, 16, 52, .94));
+  box-shadow: inset 4px 0 0 var(--gold), 0 8px 18px rgba(0, 0, 0, .35); }
+.scene.stream-sc .nb-match.is-live { box-shadow: inset 4px 0 0 #ff2b3a, inset 0 0 0 2px rgba(255, 43, 58, .8), 0 8px 18px rgba(0, 0, 0, .35); }
+.scene.stream-sc .nb-meta { margin: -7px -12px 6px; padding: 0 12px 0 16px; align-items: center; background: rgba(3, 8, 32, .55); font: 800 13px/1 var(--f-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+.scene.stream-sc .nb-meta strong, .scene.stream-sc .nb-meta b { color: var(--gold); }
+.scene.stream-sc .nb-team + .nb-team { border-top: 1px solid rgba(185, 198, 238, .16); }
+.scene.stream-sc .nb-name { font: 800 26px/1 var(--f-display); letter-spacing: .03em; text-transform: uppercase; }
+.scene.stream-sc .nb-score { font: 900 28px/1 var(--f-num); color: rgba(255, 255, 255, .45); }
+.scene.stream-sc .nb-team.is-winner .nb-name { color: #fff; }
+.scene.stream-sc .nb-team.is-winner .nb-score { color: var(--gold); }
+.scene.stream-sc .nb-match:has(.is-winner) .nb-team:not(.is-winner) :is(.nb-name, .nb-score) { color: rgba(255, 255, 255, .42); }
+.scene.stream-sc .nb-match:has(.is-winner) .nb-team:not(.is-winner) .nb-logo { opacity: .45; }
+.scene.stream-sc .nb-qualified { border: 0; padding: 14px 22px; background: linear-gradient(180deg, rgba(253, 194, 4, .22), rgba(253, 194, 4, .07));
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 24px rgba(253, 194, 4, .25); }
+.scene.stream-sc .nb-qualified-label { font: 800 14px/1 var(--f-ui); letter-spacing: .14em; color: var(--gold); }
+.scene.stream-sc .nb-qualified .nb-name { color: var(--gold); font-size: 34px; }
+.scene.stream-sc .nb-footer { border-top: 2px solid rgba(253, 194, 4, .45); font: 800 18px/1 var(--f-ui); letter-spacing: .16em; color: var(--gold); }
+.scene.stream-sc .nb-footer-note, .scene.stream-sc .nb-footer .gsl-legend { font-family: var(--f-ui); font-weight: 700; color: var(--mute); letter-spacing: .1em; }
+/* GSL */
+.scene.stream-sc .gsl-match-label { font: 800 14px/1 var(--f-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); height: 22px; }
+.scene.stream-sc .gsl-when { font: 700 13px/1 var(--f-ui); letter-spacing: .1em; color: var(--mute); }
+.scene.stream-sc .gsl-winner-line { stroke: rgba(253, 194, 4, .85); }
+.scene.stream-sc .gsl-loser-line { stroke: #b9c6ee; opacity: .6; }
+.scene.stream-sc .gsl-legend span { color: var(--gold); }
+.scene.stream-sc .gsl-legend .gsl-loss-key { color: var(--mute); }
+.scene.stream-sc :is(.gsl-qualifiers, .gsl-entries > div) { border: 0; background: var(--ss-panel); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .4); }
+.scene.stream-sc :is(.gsl-qualifiers > div > span, .gsl-entries > div > span) { font-family: var(--f-ui); font-weight: 800; color: var(--gold); }
+/* ghost bracket + embed */
+.scene.stream-sc .brk-lines { color: rgba(253, 194, 4, .45); }
+.scene.stream-sc .brk-col-l { font: 800 19px/1 var(--f-ui); color: var(--gold); }
+.scene.stream-sc .brk-box { background: linear-gradient(90deg, rgba(14, 38, 110, .86), rgba(6, 16, 52, .86)); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .25); }
+.scene.stream-sc .brk-box::before { background: var(--gold); }
+.scene.stream-sc .brk-slot { font-family: var(--f-display); color: rgba(185, 198, 238, .5); }
+.scene.stream-sc .brk-slot b { font-family: var(--f-num); color: var(--gold); background: rgba(253, 194, 4, .1); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .4); }
+.scene.stream-sc .brk-final-season { font-family: var(--f-ui); color: var(--mute); }
+
+/* ======================================================================
+   FORMAT
+   ====================================================================== */
+.scene.stream-sc .format-stage { border: 0; background: var(--ss-panel); box-shadow: inset 0 4px 0 var(--gold), inset 0 0 0 1px rgba(253, 194, 4, .3);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%); }
+.scene.stream-sc .format-step { font-family: var(--f-num); font-weight: 900; font-size: 34px; color: var(--gold); }
+.scene.stream-sc .format-name { font-weight: 800; letter-spacing: .02em; }
+.scene.stream-sc .format-headline { font-weight: 900; color: var(--gold);
+  background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 40%, var(--gold) 62%, var(--gold-deep) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.scene.stream-sc .format-points { font-family: var(--f-ui); font-weight: 600; color: var(--mute); }
+.scene.stream-sc .format-arrow { color: var(--gold); font-family: var(--f-display); font-weight: 900; }
+.scene.stream-sc .format-footer { font: 800 22px/1.3 var(--f-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+
+/* ======================================================================
+   SPONSORS
+   ====================================================================== */
+.scene.stream-sc .sp-label { font: 800 22px/1 var(--f-ui); letter-spacing: .34em; color: var(--gold); }
+.scene.stream-sc .sp-label-line { height: 3px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.scene.stream-sc .sp-label-line:last-child { background: linear-gradient(270deg, transparent, var(--gold)); }
+.scene.stream-sc .sp-tile.is-main { background: radial-gradient(70% 90% at 50% 40%, rgba(45, 91, 255, .22), transparent 70%), var(--ss-panel); }
+.scene.stream-sc .sp-tile.is-partner { background: var(--ss-panel); box-shadow: inset 0 0 0 1px rgba(253, 194, 4, .35); }
+.scene.stream-sc .sp-name { font-weight: 800; }
+
+/* ======================================================================
+   STARTING SOON
+   ====================================================================== */
+.scene.stream-sc .wait-brand { top: 64px; }
+.scene.stream-sc .wait-logo { width: 300px; height: 300px; }
+.scene.stream-sc .wait-cup { margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 22px; font: 800 40px/1 var(--f-display); letter-spacing: .08em; color: #fff; }
+.scene.stream-sc .wait-cup::before, .scene.stream-sc .wait-cup::after { content: ''; flex: none; width: 64px; height: 3px; background: linear-gradient(90deg, rgba(253, 194, 4, 0), var(--gold)); }
+.scene.stream-sc .wait-cup::after { transform: scaleX(-1); }
+.scene.stream-sc .wait-rule { display: none; }
+.scene.stream-sc .wait-title { margin-top: 20px; font: 900 172px/.9 var(--f-display); letter-spacing: .02em; color: var(--gold);
+  background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 40%, var(--gold) 62%, var(--gold-deep) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 5px 0 rgba(4, 10, 40, .55)) drop-shadow(0 14px 26px rgba(0, 0, 0, .45)); }
+.scene.stream-sc .wait-caption { margin-top: 26px; font: 800 22px/1 var(--f-ui); letter-spacing: .3em; color: var(--mute); }
+.scene.stream-sc .wait-schedule { left: 160px; right: 160px; bottom: 76px; border-top: 0; padding-top: 0; }
+.scene.stream-sc .wait-schedule-label { gap: 18px; margin-bottom: 18px; font: 800 18px/1 var(--f-ui); letter-spacing: .3em; color: var(--gold); }
+.scene.stream-sc .wait-schedule-label > span { color: var(--mute); letter-spacing: .2em; text-transform: uppercase; }
+.scene.stream-sc .wait-matches { gap: 18px; }
+.scene.stream-sc .wait-match { position: relative; gap: 14px; padding: 16px 18px 20px; border: 0; background: var(--gold); clip-path: var(--ss-cut); }
+.scene.stream-sc .wait-match::before { content: ''; position: absolute; inset: 2px 2px 6px; background: var(--ss-bar); clip-path: var(--ss-cut-in); }
+.scene.stream-sc .wait-match > * { position: relative; }
+.scene.stream-sc .wait-time { font: 800 26px/1 var(--f-num); color: var(--gold); }
+.scene.stream-sc .wait-team-logo { width: 40px; height: 40px; opacity: 1; }
+.scene.stream-sc .wait-team { font: 800 32px/1 var(--f-display); letter-spacing: .03em; color: #fff; }
+.scene.stream-sc .wait-vs { font-size: 30px; }
+.scene.stream-sc .wait-score { font: 900 30px/1 var(--f-num); color: #fff; }
+.scene.stream-sc .wait-empty { font: 800 20px/1 var(--f-ui); letter-spacing: .24em; text-transform: uppercase; color: var(--mute); }
+
+/* ---------- Graphics designer box styles (glass / solid / outline): the designer's box replaces the gold bar layers ---------- */
+.scene.stream-sc[data-design-boxes]:not([data-design-boxes="original"]) :is(.srow, .wait-match, .glass, .format-stage, .pcard) { clip-path: none; }
+.scene.stream-sc[data-design-boxes]:not([data-design-boxes="original"]) :is(.srow, .wait-match)::before,
+.scene.stream-sc[data-design-boxes]:not([data-design-boxes="original"]) :is(.srow, .wait-match)::after { display: none; }
+
+/* ---------- Graphics designer: a per-text size override wins over every rule above (the #id only raises specificity) ---------- */
+.scene.stream-sc :is([data-design-size], #ss-design-size) { font-size: var(--design-size); }

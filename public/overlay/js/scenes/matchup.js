@@ -2,6 +2,7 @@
 // and a centre panel of stat rows with two-sided bars (share of a+b, better side highlighted).
 import { h, fit, plate, playerPhoto, teamLogo, crest, roleIcon, flagBadge, laurel, initials } from '../ui.js';
 import { leagueLine } from './common.js';
+import { isStreamSc } from '../stream-sc.js';
 
 const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 
@@ -30,11 +31,11 @@ function champ(c, d) {
   return box;
 }
 
-function playerSide(p, champs, key, simple) {
+function playerSide(p, champs, key, simple, sc = false) {
   const dir = key === 'a' ? 'left' : 'right';
   const team = p?.team;
   return [
-    simple
+    simple || (sc && !p?.photo)
       ? h('div', { class: `mu-art mu-art-${key}` }, crest(team, 'mu-crest', { in: 'scale', d: key === 'a' ? 300 : 380, dur: 800 }))
       : playerPhoto(p, `mu-photo mu-photo-${key}`, { in: 'rise', d: key === 'a' ? 260 : 340, dur: 950 }),
     h('div', { class: `mu-card mu-card-${key}`, 'data-ref': p?.id ? `player:${p.id}` : null, in: dir, d: 620, dur: 700 },
@@ -88,8 +89,8 @@ export default {
     return h('div', { class: `rows-${rows.length}` },
       plate(data.theme, 'versus', ctx),
       h('div', { class: 'mu-shade' }),
-      ...playerSide(A, data.championsA, 'a', simple),
-      ...playerSide(B, data.championsB, 'b', simple),
+      ...playerSide(A, data.championsA, 'a', simple, isStreamSc(data)),
+      ...playerSide(B, data.championsB, 'b', simple, isStreamSc(data)),
       h('header', { class: 'mu-head', in: 'down', d: 180 },
         h('div', { class: 'kicker mu-kicker' }, leagueLine(data.league)),
         h('div', { class: 'mu-title-row' },

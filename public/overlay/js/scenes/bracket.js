@@ -3,6 +3,7 @@
 // Static renders wait for the embed's load event (max 4 s) before marking ready.
 import { h, plate, laurel } from '../ui.js';
 import { sceneHeader, sponsorsFor, leagueLine } from './common.js';
+import { isStreamSc } from '../stream-sc.js';
 import standings from './standings.js';
 import nativeBracket from './native-bracket.js';
 import gslBracket from './gsl-bracket.js';
@@ -89,7 +90,7 @@ function ghost(data) {
         laurel('l', 'brk-laurel'),
         h('div', { class: 'brk-final-t display' }, 'Coming Soon'),
         laurel('r', 'brk-laurel')),
-      h('div', { class: 'brk-final-s', lang: 'el' }, 'Ανακοινώνεται σύντομα'),
+      h('div', { class: 'brk-final-s', lang: 'el' }, isStreamSc(data) ? 'To be announced' : 'Ανακοινώνεται σύντομα'),
       data.league?.season ? h('div', { class: 'brk-final-season' }, data.league.season) : null));
   return wrap;
 }
@@ -109,7 +110,7 @@ export default {
         league: data.league,
         kicker: leagueLine(data.league),
         title: 'Tournament Bracket',
-        sub: 'Ο δρόμος προς τον τίτλο',
+        sub: isStreamSc(data) ? 'The road to the title' : 'Ο δρόμος προς τον τίτλο',
         subLang: 'el',
         right: spons,
       }),

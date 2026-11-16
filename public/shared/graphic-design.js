@@ -123,6 +123,11 @@ export function cleanLayout(value = {}) {
 }
 const NO_ICONS = { icons: 'classic', iconPicks: {}, customIcons: {}, iconTint: false };
 export const CUSTOM_ICON_URL = /^\/media\/design-icons\/[\w-]+\.png$/;
+// Fixed brand images of a style (img[data-image-slot]) that a design may replace with an uploaded file: assets.customImages.
+export const DESIGN_IMAGES = [
+  { id: 'lettermark', label: 'Header mark', hint: 'The mark of the typed SUPER CUP social header (when there is no logo image).' },
+  { id: 'hllLogo', label: 'HLL logo', hint: 'The logo of the Starting soon screen.' },
+];
 export const EMPTY_DESIGN = { fonts: { title: '', body: '', label: '', numbers: '' }, assets: { frame: 'original', boxes: 'original', radius: 0, opacity: 85, accent: '', accent2: '', ...NO_ICONS }, screens: {}, layouts: {}, backgrounds: { default: { ...BG_DEFAULT }, screens: {} } };
 export const BUILTIN_DESIGNS = [
   { id: 'original', name: 'Original broadcast', builtin: true, config: structuredClone(EMPTY_DESIGN) },
@@ -154,6 +159,13 @@ export function normalizeDesign(raw = {}) {
   for (const [slot, url] of Object.entries(assets.customIcons || {})) {
     if (!ICON_SLOTS.some(s => s.id === slot) || typeof url !== 'string' || !CUSTOM_ICON_URL.test(url)) fail('Invalid custom icon');
     result.assets.customIcons[slot] = url;
+  }
+  // Only stored when used, so older designs keep their exact shape. Unknown images of a later version are dropped.
+  if (assets.customImages !== undefined && !object(assets.customImages)) fail('Custom images must be an object');
+  for (const [slot, url] of Object.entries(assets.customImages || {})) {
+    if (!DESIGN_IMAGES.some(s => s.id === slot)) continue;
+    if (typeof url !== 'string' || !CUSTOM_ICON_URL.test(url)) fail('Invalid custom image');
+    (result.assets.customImages ||= {})[slot] = url;
   }
   if (raw.screens !== undefined && !object(raw.screens)) fail('Screen text must be an object');
   for (const [scene, slots] of Object.entries(raw.screens || {})) {

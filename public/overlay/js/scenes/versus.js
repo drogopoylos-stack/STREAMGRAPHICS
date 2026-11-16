@@ -3,6 +3,7 @@
 import { h, fit, plate, crest, playerPhoto, roleIcon, roleLabel, laurel, leagueLogo, recordText, hasScore, scoreBlock, statusBadge, stageText } from '../ui.js';
 import { splitRoster, whenBits, dotted, sponsorsFor } from './common.js';
 import { textVersus } from './text-lineups.js';
+import { isStreamSc, hasPhotos } from '../stream-sc.js';
 
 function miniCard(p, i, d) {
   return h('div', { class: 'mcard', 'data-ref': p.id ? `player:${p.id}` : null, in: 'up', d: d + i * 70, dur: 650 },
@@ -36,6 +37,8 @@ function centre(m) {
 export default {
   render(data, ctx) {
     if (data.rosterStyle === 'text') return textVersus(data, ctx);
+    // SUPER CUP: without player photos the full versus shows the text line-ups instead of empty silhouettes.
+    if (isStreamSc(data) && ctx.mode !== 'simple' && !hasPhotos([...(data.playersA || []), ...(data.playersB || [])])) return textVersus(data, ctx);
     const simple = ctx.mode === 'simple';
     const m = data.match || {};
     const stage = stageText(m) || data.league?.name || '';

@@ -11,6 +11,9 @@ const ROLE_LABELS = { Top: 'TOP', Jungle: 'JUNGLE', Mid: 'MID', Bot: 'BOT', Supp
 const ROUND_ORDINALS = ['FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH'];
 const SUPERCUP_BG = { post: '/brand/supercup/bg-post.jpg', story: '/brand/supercup/bg-story.jpg' };
 const DEFAULT_TWITCH = 'twitch.tv/HellenicLegends';
+// Live stream plates of the SUPER CUP style: the arena photo, and a smoother copy for the scenes full of panels.
+const SUPERCUP_STREAM_BG = { full: '/brand/supercup/bg-stream.jpg', clean: '/brand/supercup/bg-stream-clean.jpg' };
+const CLEAN_STREAM_SCENES = new Set(['schedule', 'standings', 'bracket', 'format']);
 
 const byId = (list, id) => list.find((x) => x.id === id) ?? null;
 
@@ -32,6 +35,9 @@ function common(db, scene, params) {
     theme.bgImage = theme.versusBgImage = theme.socialBgImage = background.url;
   }
   const social = sceneDefinition(scene)?.group === 'social' ? socialMeta(s, scene, params, theme) : null;
+  const streamStyle = !social && s.streamStyle === 'supercup' ? 'supercup' : 'classic';
+  // The SUPER CUP plate is the default of that style only; a custom background (tournament or graphic) still wins.
+  if (streamStyle === 'supercup') theme.bgImage ||= CLEAN_STREAM_SCENES.has(scene) ? SUPERCUP_STREAM_BG.clean : SUPERCUP_STREAM_BG.full;
   return {
     scene,
     mode: params.mode === 'simple' || params.mode === 'full' ? params.mode : s.mode,
@@ -40,8 +46,9 @@ function common(db, scene, params) {
     league: { name: s.leagueName, short: s.leagueShort, season: s.season, logo: s.leagueLogo },
     theme,
     graphicDesign: s.graphicDesign?.config || null,
-    sponsors: s.sponsorsOnGraphics ? db.sponsors.filter((x) => x.logo) : [],
-    ...(social ? { social } : {}),
+    // Live graphics and social posts have their own switch (a stream can show the sponsor through OBS instead).
+    sponsors: (social ? s.sponsorsOnSocial !== false : s.sponsorsOnGraphics) ? db.sponsors.filter((x) => x.logo) : [],
+    ...(social ? { social } : { streamStyle }),
   };
 }
 

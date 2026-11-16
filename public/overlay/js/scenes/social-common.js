@@ -154,7 +154,7 @@ function measureLogo(wrap, img, size, mode) {
 /** Team logo in a square box (dashed "?" for a place without a team). */
 export function sxLogo(team, size, ctx, cls = '') {
   const box = { width: `${size}px`, height: `${size}px` };
-  if (!team || team.placeholder) return h('div', { class: `sx-logo is-tbd ${cls}`, style: { ...box, fontSize: `${Math.round(size * 0.42)}px` } }, '?');
+  if (!team || team.placeholder) return h('div', { class: `sx-logo is-tbd ${cls}`, 'data-image': 'team', style: { ...box, fontSize: `${Math.round(size * 0.42)}px` } }, '?');
   const wrap = teamLogo(team, `sx-logo ${cls}`);
   Object.assign(wrap.style, box);
   const img = wrap.querySelector('img');
@@ -169,7 +169,7 @@ export function sxLogo(team, size, ctx, cls = '') {
 export function sxGhost(team, size, ctx) {
   if (!team?.logo) return null;
   const img = h('img', { src: team.logo, alt: '', draggable: 'false' });
-  const wrap = h('div', { class: 'sx-ghost', 'aria-hidden': 'true' }, img);
+  const wrap = h('div', { class: 'sx-ghost', 'aria-hidden': 'true', 'data-image': 'team', 'data-ref': teamRef(team) }, img);
   img.addEventListener('error', () => wrap.remove(), { once: true });
   ctx?.waits?.push(measureLogo(wrap, img, size, 'contain'));
   return wrap;
@@ -177,7 +177,7 @@ export function sxGhost(team, size, ctx) {
 
 /** Big chamfered logo plate (poster, result, live). side 'a' | 'b' mirrors the chamfers; state 'win' | 'lose'. */
 export function sxPlate(team, size, ctx, { side = 'a', state = '' } = {}) {
-  return h('div', { class: `sx-plate ${side} ${state ? `is-${state}` : ''}`, style: { width: `${size}px`, height: `${size}px`, '--ch': `${Math.round(size * 0.1)}px` } },
+  return h('div', { class: `sx-plate ${side} ${state ? `is-${state}` : ''}`, 'data-image': 'team', 'data-ref': teamRef(team), style: { width: `${size}px`, height: `${size}px`, '--ch': `${Math.round(size * 0.1)}px` } },
     sxLogo(team, Math.round(size * 0.74), ctx));
 }
 
@@ -240,7 +240,7 @@ function typeLock(data, compact) {
   const s = data.social || {};
   const title = s.title || String(data.league?.name || '').toUpperCase();
   const words = [s.year ? h('div', { class: 'sx-year' }, s.year) : null, h('div', { class: 'sx-title fit' }, title)];
-  const mark = h('img', { class: 'sx-mark', src: s.lettermark || '/brand/hll-lettermark-white.png', alt: '', draggable: 'false' });
+  const mark = h('img', { class: 'sx-mark', src: s.lettermark || '/brand/hll-lettermark-white.png', alt: '', draggable: 'false', 'data-image': 'mark', 'data-image-slot': 'lettermark' });
   return h('div', { class: 'sx-lock is-type' }, mark, compact ? h('div', { class: 'sx-stack' }, words) : words);
 }
 
@@ -249,7 +249,7 @@ export function sxHeader(data, { size = 'full', round = '', kicker = '' } = {}) 
   const logo = data.social?.logo;
   let lock;
   if (logo) {
-    const img = h('img', { class: 'sx-lock-img', src: logo, alt: '', draggable: 'false' });
+    const img = h('img', { class: 'sx-lock-img', src: logo, alt: '', draggable: 'false', 'data-image': 'event' });
     lock = h('div', { class: 'sx-lock is-image' }, img);
     img.addEventListener('error', () => lock.replaceWith(typeLock(data, size === 'compact')), { once: true });
   } else {
@@ -270,7 +270,7 @@ export function sxSponsors(data) {
     h('div', { class: 'sx-sponsor-logos' }, list.slice(0, 3).map((s) => {
       const img = h('img', { src: s.logo, alt: s.name || '', draggable: 'false' });
       img.addEventListener('error', () => img.replaceWith(h('span', { class: 'sx-sponsor-name' }, s.name || '')), { once: true });
-      return h('div', { class: 'spons-item sx-sponsor-logo', 'data-ref': s.id ? `sponsor:${s.id}` : null }, img);
+      return h('div', { class: 'spons-item sx-sponsor-logo', 'data-image': 'sponsor', 'data-ref': s.id ? `sponsor:${s.id}` : null }, img);
     })));
 }
 

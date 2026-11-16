@@ -7,7 +7,7 @@ function player(player, team, side, effect) {
   return h('div', { class: `so-fighter so-fighter-${side} effect-${effect}`, 'data-ref': player?.id ? `player:${player.id}` : null, style: { '--team-colour': team?.colors?.primary || '#c8102e', '--photo-mask': mask } },
     h('div', { class: 'so-fighter-orbit' }),
     playerPhoto(player, 'so-player-photo'),
-    player?.photo ? h('div', { class: 'so-player-ink', 'aria-hidden': 'true' }) : null,
+    player?.photo ? h('div', { class: 'so-player-ink', 'aria-hidden': 'true', 'data-image': 'player' }) : null,
     h('div', { class: 'so-player-caption' }, h('span', { class: 'so-player-role' }, player?.role || 'PLAYER'), fit('so-player-nick', player?.nick || 'PLAYER TBA')));
 }
 

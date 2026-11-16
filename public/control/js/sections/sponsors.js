@@ -15,6 +15,11 @@ let els = null;
 export function mount(root) {
   const head = sectionHead(t('sponsors.title'), '', btn(t('sponsors.add'), { kind: 'primary', iconName: 'plus', onclick: () => edit(null) }));
   const onG = ctlToggle({ value: !!store.state.settings.sponsorsOnGraphics, label: t('sponsors.onGraphics'), hint: t('sponsors.onGraphicsHint') });
+  const onS = ctlToggle({ value: store.state.settings.sponsorsOnSocial !== false, label: t('sponsors.onSocial'), hint: t('sponsors.onSocialHint') });
+  onS.input.addEventListener('change', async () => {
+    const v = onS.get();
+    try { await api.put('/api/settings', { sponsorsOnSocial: v }); toast(v ? t('sponsors.turnedOn') : t('sponsors.turnedOff'), 'ok'); store.refresh(); } catch (e) { toastError(e); onS.set(!v); }
+  });
   onG.input.addEventListener('change', async () => {
     const v = onG.get();
     try {
@@ -25,8 +30,8 @@ export function mount(root) {
   });
   const grid = h('div.grid.grid-sponsors');
   const empty = h('div', { hidden: true }, emptyState({ iconName: 'sponsors', title: t('sponsors.empty'), body: t('sponsors.emptyBody'), action: btn(t('sponsors.add'), { kind: 'primary', iconName: 'plus', onclick: () => edit(null) }) }));
-  root.append(head, h('div.panel.panel-inline', onG.el), grid, empty);
-  els = { head, grid, empty, onG };
+  root.append(head, h('div.panel.panel-inline', onG.el, onS.el), grid, empty);
+  els = { head, grid, empty, onG, onS };
   update(store.state);
 }
 
@@ -54,6 +59,7 @@ function card(s) {
 export function update(state) {
   if (!els || !state) return;
   if (document.activeElement !== els.onG.input) els.onG.set(!!state.settings.sponsorsOnGraphics);
+  if (document.activeElement !== els.onS.input) els.onS.set(state.settings.sponsorsOnSocial !== false);
   const list = [...state.sponsors].sort((a, b) => (a.tier === b.tier ? a.name.localeCompare(b.name) : a.tier === 'main' ? -1 : 1));
   els.head.setSub(t('sponsors.sub', { n: list.length }));
   els.empty.hidden = list.length > 0;

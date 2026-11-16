@@ -1,7 +1,8 @@
 // Day schedule: header (Today's / Tomorrow's matches + Greek date), one row per match.
 // Row height adapts to the number of matches (1–8+ rows) through the --rh custom property.
 import { h, fit, plate, teamLogo, hasScore, scoreBlock, boText, stageText } from '../ui.js';
-import { isoDay } from '../core.js';
+import { isoDay, dayLabel } from '../core.js';
+import { isStreamSc } from '../stream-sc.js';
 import { sceneHeader, sponsorsFor, leagueLine } from './common.js';
 
 const AREA_TOP = 286;
@@ -55,6 +56,8 @@ export default {
     const avail = AREA_BOTTOM - AREA_TOP;
     const rh = n ? Math.max(64, Math.min(176, Math.floor((avail - GAP * (n - 1)) / n))) : 0;
     const gap = n > 6 ? 10 : GAP;
+    const sc = isStreamSc(data);
+    const lines = rh >= 150 ? 3 : rh >= 110 ? 2 : 1;
 
     return h('div', { class: `${n ? '' : 'is-empty'} ${n > 5 ? 'dense' : ''} ${data.showDates ? 'has-dates' : ''}`, style: { '--rh': `${rh}px`, '--gap': `${gap}px` } },
       plate(data.theme, 'main', ctx),
@@ -62,16 +65,16 @@ export default {
         league: data.league,
         kicker: leagueLine(data.league),
         title: data.showDates ? 'Tournament Schedule' : titleFor(data.date),
-        sub: data.dateLabel || '',
+        sub: (sc && data.date ? dayLabel(data.date) : data.dateLabel) || '',
         subLang: 'el',
         right: spons,
       }),
       h('div', { class: 'sch-rule rule', in: 'wipec', d: 420, dur: 800 }),
       n
-        ? h('div', { class: `sch-rows n${n}` }, matches.map((m, i) => row(m, i, rh >= 150 ? 3 : rh >= 110 ? 2 : 1, data.showDates)))
+        ? h('div', { class: `sch-rows n${n}` }, matches.map((m, i) => row(m, i, sc ? Math.min(2, lines) : lines, data.showDates)))
         : h('div', { class: 'sch-empty glass ticks', in: 'up', d: 520 },
           h('div', { class: 'sch-empty-k' }, 'Schedule'),
           h('div', { class: 'sch-empty-t display' }, 'No matches scheduled'),
-          h('div', { class: 'sch-empty-s', lang: 'el' }, data.dateLabel || '')));
+          h('div', { class: 'sch-empty-s', lang: 'el' }, (sc && data.date ? dayLabel(data.date) : data.dateLabel) || '')));
   },
 };

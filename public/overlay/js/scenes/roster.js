@@ -2,6 +2,7 @@
 import { h, fit, plate, crest, playerPhoto, roleIcon, roleLabel, flagBadge, meander, leagueLogo, recordText, sponsorStrip } from '../ui.js';
 import { splitRoster } from './common.js';
 import { textRoster } from './text-lineups.js';
+import { isStreamSc, hasPhotos } from '../stream-sc.js';
 
 function starterCard(p, i, simple) {
   const d = 520 + i * 85;
@@ -34,6 +35,8 @@ function benchChip(p, simple) {
 export default {
   render(data, ctx) {
     if (data.rosterStyle === 'text') return textRoster(data, ctx);
+    // SUPER CUP: without player photos the full roster is the text roster instead of empty silhouettes.
+    if (isStreamSc(data) && ctx.mode !== 'simple' && !hasPhotos(data.players)) return textRoster(data, ctx);
     const simple = ctx.mode === 'simple';
     const { team, record, league } = data;
     const { starters, bench: allBench } = splitRoster(data.players || []);

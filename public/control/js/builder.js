@@ -30,9 +30,9 @@ export function socialScheduleParams({ round, day, date, today, page, results } 
   return params;
 }
 
-export function sceneBuilder({ onChange } = {}) {
+export function sceneBuilder({ onChange, sceneFilter = () => true } = {}) {
   const state = store.state;
-  const allowedScenes = st => SCENES.filter(s => !st.settings.enabledScenes?.length || st.settings.enabledScenes.includes(s)).map(s => ({ value: s, label: sceneName(s) }));
+  const allowedScenes = st => SCENES.filter(s => sceneFilter(s) && (!st.settings.enabledScenes?.length || st.settings.enabledScenes.includes(s))).map(s => ({ value: s, label: sceneName(s) }));
   const scene = ctlSelect({ options: allowedScenes(state), value: allowedScenes(state).find(s => s.value === 'versus')?.value || allowedScenes(state)[0]?.value });
   const team = ctlSelect({ options: teamOptions(state) });
   const bracketOptions = st => (st.settings.brackets || []).map(bracket => ({ value: bracket.id, label: bracket.name }));
@@ -135,7 +135,7 @@ export function sceneBuilder({ onChange } = {}) {
   function set(cue) {
     if (!cue?.scene) return;
     const p = cue.params ?? {};
-    scene.set(cue.scene);
+    scene.set(sceneFilter(cue.scene) ? cue.scene : allowedScenes(store.state)[0]?.value);
     if (cue.scene === 'bracket') bracket.set(p.bracket || bracketOptions(store.state)[0]?.value);
     if (p.team) team.set(p.team);
     if (['versus', 'simple-vs', 'social-versus'].includes(cue.scene)) match.set(p.match ?? '');

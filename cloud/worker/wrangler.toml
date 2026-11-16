@@ -1,0 +1,8 @@
+name = "hll-broadcast"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "HLL"
+id = "a2d685f5709c4dce881463dc9443caf3"

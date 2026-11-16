@@ -83,7 +83,7 @@ test('tournament HTTP workflow preserves HLL and isolates the second tournament'
   };
 
   await t.test('switch takes graphics off air and the live stream updates', async () => {
-    const uploaded = await uploadLogo('<svg xmlns="http://www.w3.org/2000/svg"><title>HLL</title></svg>');
+    const uploaded = await uploadLogo('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><title>HLL</title><rect width="8" height="8" fill="red"/></svg>');
     hllLogo = uploaded.data.leagueLogo;
     const controller = new AbortController();
     const stream = await fetch(base + '/api/live/stream', { signal: controller.signal });
@@ -113,10 +113,13 @@ test('tournament HTTP workflow preserves HLL and isolates the second tournament'
   });
 
   await t.test('branding uploads and output folders stay separate', async () => {
-    const uploaded = await uploadLogo('<svg xmlns="http://www.w3.org/2000/svg"><title>Cup</title></svg>');
+    const uploaded = await uploadLogo('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><title>Cup</title><rect width="8" height="8" fill="blue"/></svg>');
     assert.notEqual(uploaded.data.leagueLogo, hllLogo);
-    const original = await (await fetch(base + hllLogo)).text();
-    assert.match(original, /HLL/);
+    // Uploads are stored as PNG: the HLL logo is still the red one, not the blue Cup logo.
+    const original = Buffer.from(await (await fetch(base + hllLogo)).arrayBuffer());
+    const { default: sharp } = await import('sharp');
+    const [red, , blue] = (await sharp(original).raw().toBuffer());
+    assert.ok(red > 200 && blue < 50, `HLL logo pixel ${red},${blue}`);
     await request('/api/settings', 'PUT', { photo: { strength: 0.2 }, theme: { bgImage: '/media/cup-bg.png' } });
     const state = (await request('/api/state')).data;
     assert.notEqual(state.settings.outputDir, hllOutput);

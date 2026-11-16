@@ -29,6 +29,8 @@ let navEls = new Map();
 let hdr = null;
 let loadedTournamentId = null;
 let tournamentChanging = false;
+const SOCIAL_SECTIONS = new Set(['teams', 'players', 'matches', 'graphics', 'designer', 'help']);
+const isSocial = () => store.access?.edition === 'social';
 
 /* ------------------------------------------------------------- boot */
 
@@ -36,7 +38,9 @@ async function boot() {
   const bootEl = document.getElementById('boot');
   setKids(bootEl, h('div.boot-card', h('span.spinner.spinner-lg'), h('span', t('common.loading'))));
   try {
-    await store.load();
+    const [access] = await Promise.all([api.get('/api/whoami'), store.load()]);
+    store.access = { ...access, edition: access.edition === 'social' || new URLSearchParams(location.search).get('edition') === 'social' ? 'social' : 'full' };
+    document.body.dataset.edition = store.access.edition;
   } catch (e) {
     setKids(bootEl, h('div.boot-card.is-error',
       icon('alert', 28),
@@ -93,6 +97,7 @@ function goto(id, opts = null) {
 }
 
 function show(id, opts) {
+  if (isSocial() && !SOCIAL_SECTIONS.has(id)) { id = 'graphics'; opts = null; }
   const sec = byId.get(id);
   let page = pages.get(id);
   if (!page) {
@@ -173,12 +178,13 @@ function buildHeader() {
   // Data sync with the other PCs: status, and a click uploads and gets updates now.
   const sync = h('button.jobs-chip.sync-chip', { type: 'button', hidden: true, onclick: () => syncClick() }, h('span.sync-dot'), h('span.sync-text'));
   window.addEventListener('hll:sync', (e) => paintSync(e.detail));
-  api.get('/api/sync').then(paintSync).catch(() => {});
+  if (!isSocial()) api.get('/api/sync').then(paintSync).catch(() => {});
   const tournament = createTournamentControls({ isDirty: () => !!drawerState()?.isDirty() || settings.isDirty() });
   const bar = h('div.topbar-inner',
-    h('a.brand', { href: '#/live' }, logo, title),
+    h('a.brand', { href: isSocial() ? '#/graphics' : '#/live' }, logo, title),
+    isSocial() ? h('span.badge.badge-gold', t('remote.socialEdition')) : null,
     tournament.el,
-    h('div.onair-wrap', onair, hideBtn),
+    h('div.onair-wrap', { hidden: isSocial() }, onair, hideBtn),
     h('div.spacer'),
     h('div.jobs-wrap', jobsBtn, jobsPop),
     sync,
@@ -217,6 +223,7 @@ const SYNC_TEXT = { synced: 'Synced', syncing: 'Syncingâ€¦', offline: 'Offline Â
 function paintSync(s) {
   if (!hdr || !s) return;
   const el = hdr.sync;
+  if (isSocial()) { el.hidden = true; return; }
   el.hidden = !s.enabled;
   const text = s.behind ? 'Updates from another PC' : s.pending && s.status === 'synced' ? 'Saving to cloud soon' : SYNC_TEXT[s.status] || 'Synced';
   el.dataset.status = s.behind ? 'behind' : s.status;
@@ -277,7 +284,9 @@ function buildNav() {
     navEls.set(sec.id, a);
     return a;
   });
-  setKids(nav, h('div.nav-list', items.slice(0, 1), h('div.nav-sep'), items.slice(1, 6), h('div.nav-sep'), items.slice(6, 8), items[10], items.slice(8, 10)));
+  setKids(nav, isSocial()
+    ? h('div.nav-list', items.filter((_, i) => SOCIAL_SECTIONS.has(SECTIONS[i].id)))
+    : h('div.nav-list', items.slice(0, 1), h('div.nav-sep'), items.slice(1, 6), h('div.nav-sep'), items.slice(6, 8), items[10], items.slice(8, 10)));
 }
 
 function paintBadges(state) {

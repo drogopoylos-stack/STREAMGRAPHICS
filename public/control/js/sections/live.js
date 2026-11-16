@@ -377,7 +377,8 @@ function paintScore() {
 
 export function update(state) {
   if (!els || !state) return;
-  const all = quickCards(state);
+  // Live is for the stream: social posts and stories are made in Graphics, not taken on air.
+  const all = quickCards(state).filter((c) => !String(c.scene).startsWith('social-'));
   els.browser.update(all, state);
   builder.refresh(state);
   els.matchSheet.update();

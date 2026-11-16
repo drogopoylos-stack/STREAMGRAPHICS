@@ -4,7 +4,7 @@ import { icon } from '../icons.js';
 import { t } from '../strings.js';
 import { api } from '../api.js';
 import { store } from '../store.js';
-import { sectionHead, panel, copyField, ctlToggle, toast } from '../ui.js';
+import { sectionHead, panel, copyField, ctlToggle, toast, toastError, confirmDialog, btn } from '../ui.js';
 import { quickCards, sceneUrl } from '../scenes.js';
 import { MASTER_URL } from '../../../shared/scenes.js';
 
@@ -60,7 +60,7 @@ export function mount(root) {
   const lanList = h('div.lan-list', h('div.lan-loading', h('span.spinner'), h('span', t('common.loading'))));
   const lanOther = h('div.lan-other', { hidden: true });
   const firewall = h('p', t('help.lanFirewall', { port: location.port || '80' }));
-  const lan = panel(t('help.lanTitle'),
+  const lan = panel(t('remote.lanTitle'),
     h('p.panel-sub', t('help.lanIntro')),
     lanList,
     lanOther,
@@ -74,10 +74,44 @@ export function mount(root) {
   root.append(sectionHead(t('help.title'), t('help.sub')),
     h('div.help-grid',
       h('div.col', livePanel, h('div.two-up', obs, vmix), scenePanel),
-      h('div.col', vmixData, lan, staticPanel)));
+      h('div.col', vmixData, onlineCard(), lan, staticPanel)));
   els = { liveField, sceneList, lanList, lanOther, firewall };
   update(store.state);
   loadNet();
+}
+
+function onlineCard() {
+  if (store.access?.remote !== false) return null;
+  const toggle = ctlToggle({ label: t('remote.enabled') });
+  const status = h('p.panel-sub', { role: 'status', 'aria-live': 'polite' }, t('common.loading'));
+  const rows = new Map();
+  const list = h('div.form-stack', ['full', 'social', 'overlay'].map(role => {
+    const link = copyField('');
+    const rotate = btn(t('remote.newLink'), { size: 'sm', onclick: async () => {
+      if (!await confirmDialog({ title: t('remote.rotateTitle'), body: t('remote.rotateBody'), ok: t('remote.newLink') })) return;
+      rotate.disabled = true;
+      try { paint(await api.post('/api/remote/rotate', { role })); }
+      catch (error) { toastError(error); }
+      finally { rotate.disabled = false; }
+    } });
+    rows.set(role, link);
+    return h('div.form-block', h('div.block-head', h('span.field-label', t(`remote.${role}`)), rotate), link);
+  }));
+  const paint = state => {
+    toggle.set(state.enabled);
+    status.textContent = [t(`remote.${state.status}`), state.message].filter(Boolean).join(' · ');
+    for (const [role, link] of rows) link.setValue(state.links[role] || '');
+  };
+  toggle.input.disabled = true;
+  toggle.input.addEventListener('change', async () => {
+    toggle.input.disabled = true;
+    try { paint(await api.put('/api/remote', { enabled: toggle.get() })); }
+    catch (error) { toggle.set(!toggle.get()); toastError(error); }
+    finally { toggle.input.disabled = false; }
+  });
+  api.get('/api/remote').then(state => { paint(state); toggle.input.disabled = false; }).catch(error => { status.textContent = error.message; });
+  window.addEventListener('hll:remote', event => paint(event.detail));
+  return panel(t('remote.title'), h('p.panel-sub', t('remote.intro')), toggle.el, status, list);
 }
 
 /** Addresses can change (Wi-Fi switch, VPN on/off): re-ask the server each time the page is opened. */

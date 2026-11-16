@@ -246,9 +246,13 @@ export function isoDay(offset = 0) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
 
+// Date language of the scene being built: Greek by default, English for the SUPER CUP stream style (render.js).
+let dateLocale = 'el-GR';
+export function setDateLocale(locale) { dateLocale = locale || 'el-GR'; }
+
 /** "Σάββατο 12 Σεπτεμβρίου" for a YYYY-MM-DD date (same format as the server's dateLabel). */
 export function dayLabel(iso, opts = { weekday: 'long', day: 'numeric', month: 'long' }) {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
   const [y, m, d] = iso.split('-').map(Number);
-  return new Intl.DateTimeFormat('el-GR', { ...opts, timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d, 12)));
+  return new Intl.DateTimeFormat(dateLocale, { ...opts, timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d, 12)));
 }

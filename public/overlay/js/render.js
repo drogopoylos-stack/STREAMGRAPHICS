@@ -1,5 +1,6 @@
 // Scene registry + mount pipeline shared by scene.html and live.html.
-import { themeVars, loadFonts, fitAll, imagesReady, sleep } from './core.js';
+import { themeVars, loadFonts, fitAll, imagesReady, sleep, setDateLocale } from './core.js';
+import { isStreamSc, decorateStreamSc, STREAM_SC_THEME } from './stream-sc.js';
 import { h } from './ui.js';
 import roster from './scenes/roster.js';
 import versus from './scenes/versus.js';
@@ -44,10 +45,16 @@ export function buildScene(data, ctx) {
   c.bg = ctx.bg ?? bg.show;
   c.bgMotion = c.bg ? (ctx.motion ?? bg.motion) : 'none';
   c.bgSpeed = bg.speed; c.bgIntensity = bg.intensity; c.bgForce = !!ctx.motion;
-  const theme = { ...data.theme };
+  // SUPER CUP stream style: its own palette, English dates, and no sponsor strip (the sponsor is added in OBS).
+  const sc = isStreamSc(data);
+  const theme = sc ? { ...data.theme, ...STREAM_SC_THEME } : { ...data.theme };
   for (const key of ['accent', 'accent2']) if (data.graphicDesign?.assets?.[key]) theme[key] = data.graphicDesign.assets[key];
-  const styledData = { ...data, theme };
-  const el = applyGraphicDesign(decorate(mod.render(styledData, c), name, styledData, c), styledData);
+  const styledData = sc && name !== 'sponsors' ? { ...data, theme, sponsors: [] } : { ...data, theme };
+  setDateLocale(sc ? 'en-GB' : 'el-GR');
+  let built;
+  try { built = mod.render(styledData, c); } finally { setDateLocale('el-GR'); }
+  if (sc) decorateStreamSc(built, c);
+  const el = applyGraphicDesign(decorate(built, name, styledData, c), styledData);
   const size = dimensionsFor(name, c.params);
   el.style.width = `${size.width}px`;
   el.style.height = `${size.height}px`;

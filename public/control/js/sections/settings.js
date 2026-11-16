@@ -69,9 +69,10 @@ export function mount(root) {
   };
   socialLogo.el.addEventListener('input', paintSocialLogo);
   socialLogo.el.addEventListener('change', paintSocialLogo);
-  const socialPanel = panel('Social graphics',
-    h('p.panel-sub', 'Style and logo for the social posts and stories. Classic keeps the current social scenes.'),
+  const socialPanel = panel('Graphics style',
+    h('p.panel-sub', 'Look of the live stream graphics and of the social posts and stories. Classic keeps the current graphics.'),
     h('div.form-grid',
+      field('Live stream graphics style', F('streamStyle', ctlSelect({ options: [{ value: 'classic', label: 'Classic' }, { value: 'supercup', label: 'SUPER CUP' }] })), { span: 2, hint: 'SUPER CUP uses the 2027 tournament look (arena background, gold panels) for the 1920×1080 stream graphics. A background you choose still wins.' }),
       field('Social graphics style', F('socialStyle', ctlSelect({ options: [{ value: 'classic', label: 'Classic' }, { value: 'supercup', label: 'SUPER CUP' }] })), { span: 2, hint: 'SUPER CUP uses the 2027 tournament look for social post and story graphics.' }),
       field('Social logo URL', socialLogo, { span: 2, hint: 'Leave empty for the typed header. Use an uploaded image URL or an https link.' })),
     h('div.form-block', h('h3.block-title', 'Logo preview'), socialLogoPreview));
@@ -159,7 +160,7 @@ function fillFromState(force) {
     form.snapshot();
     els.paintEmbed();
   }
-  els.bgZone.setSrc(s.theme?.bgImage || `/brand/${s.theme?.preset ?? 'sparta'}-main.jpg`);
+  els.bgZone.setSrc(s.theme?.bgImage || (s.streamStyle === 'supercup' ? '/brand/supercup/bg-stream.jpg' : `/brand/${s.theme?.preset ?? 'sparta'}-main.jpg`));
   els.bgReset.hidden = !s.theme?.bgImage;
   els.logoZone.setSrc(s.leagueLogo || '/brand/hll-logo.png');
   els.logoReset.hidden = !s.leagueLogo || s.leagueLogo === '/brand/hll-logo.png';

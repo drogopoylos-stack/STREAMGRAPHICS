@@ -1,5 +1,7 @@
 node_modules/
 data/
+# Remote access keys and the Worker publish secret belong in the private data repo.
+/remote.json
 output/
 models/*.onnx
 jobs/
@@ -10,3 +12,4 @@ server.pid
 public/overlay/js/scenes/graphify-out/
 server.err.log
 *.tmp
+tools/

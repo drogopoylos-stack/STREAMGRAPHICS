@@ -13,6 +13,12 @@ One local program: a control panel for the operator, live overlays for OBS Studi
 The first background removal downloads the ISNet model (178 MB) to `models/`.
 PNG export needs Google Chrome or Microsoft Edge. Set `HLL_BROWSER` to the .exe path if it is in a different place.
 
+## Desktop app
+
+On Windows 11 x64, run `HLL-Broadcast.exe` from the download page. It installs portable Node and the public program into `%LOCALAPPDATA%\HLL-Broadcast` and creates **HLL Broadcast** (full control panel) and **HLL Social** (social control panel) shortcuts. The first install starts with an empty database. Updates are checked on each launch; local data, PNG exports and downloaded models are kept. Installed versions also work offline. Use the system tray to open either edition, check for updates, or quit the server.
+
+Build: `powershell -NoProfile -ExecutionPolicy Bypass -File desktop\build.ps1`. Publish the download page and installer: `powershell -NoProfile -ExecutionPolicy Bypass -File desktop\publish.ps1 -Version 1.0.0` (Cloudflare login required). New program changes reach colleagues after they are pushed to GitHub `main`; republish the site when changing the installer or its download page. Run `desktop\test.ps1` for an isolated first-install smoke test on an unused port.
+
 ## Get the data
 
 Use **Active tournament** in the top bar to choose which tournament you are working on. Open **Tournaments → Add tournament** to create another one, set its name and optional broadcast days, then choose **Switch tournament**. Your existing HLL setup is kept as the first tournament.

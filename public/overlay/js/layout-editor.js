@@ -4,6 +4,7 @@
 import { screenElements, screenSlots, expandDesignText, TEXT_TOKENS, cleanLayout, LAYOUT_LIMITS } from '../../shared/graphic-design.js';
 import { effectiveLayout, applyNodeLayout, clearNodeLayout } from './graphic-layout.js';
 import { fitAll, fitText } from './core.js';
+import { IMAGE_SELECTOR, imageKind, imageLabel, pickTarget } from './editor-images.js';
 
 const SNAP = 6;
 const CLICK_SLOP = 3;
@@ -25,8 +26,9 @@ export function createLayoutEditor(post) {
   let selection = null; // { id, index, only }
   let viewScale = 1;
   let drag = null;
-  let hover = null;
-  let data = {}, target = null, background = false, editing = null, fitFrame = 0;
+  let hover = null, hoverImage = null;
+  // pointImage: the image under the last click when the click kept a larger selected element (for "Change image…").
+  let data = {}, target = null, pointImage = null, background = false, editing = null, fitFrame = 0;
   let lastPress = { at: -Infinity, x: 0, y: 0 };
 
   const overlay = div('le-overlay');
@@ -97,12 +99,13 @@ export function createLayoutEditor(post) {
       width: node.offsetWidth,
       height: node.offsetHeight,
       parent: parentNode && root.contains(parentNode) ? { id: parentNode.dataset.designEl, index: indexOf(parentNode) } : null,
+      image: pointImage?.isConnected && pointImage !== node ? describe(pointImage) : null,
     };
   }
   const announce = () => post('selected', { selection: selectionInfo() });
 
   function select(id, index) {
-    target = null; background = id === 'background';
+    target = null; pointImage = null; background = id === 'background';
     selection = id && !background ? { id, index, only: `${id}#${index}` in map } : null;
     if (selection && !primary()) selection = null;
     draw();
@@ -122,27 +125,25 @@ export function createLayoutEditor(post) {
     post('elements', { elements: [...seen.values()] });
   }
 
+  /** The image, text or element that a double-click at (x, y) acts on (see editor-images.js pickTarget). */
   function actionableAt(x, y) {
-    for (const el of document.elementsFromPoint(x, y)) {
-      if (overlay.contains(el) || !root.contains(el)) continue;
-      const image = el.closest('[data-icon-slot],.tlogo,.pphoto,.league-logo,.spons-item,.sp-tile');
-      if (image) return image;
-      const slot = el.closest('[data-design-slot]');
-      if (slot) return slot;
-      const item = el.closest('[data-design-el]');
-      if (item) return item;
-    }
-    return null;
+    const stack = document.elementsFromPoint(x, y).filter(el => !overlay.contains(el) && root.contains(el));
+    return pickTarget(stack, { image: el => el.closest(IMAGE_SELECTOR), slot: el => el.closest('[data-design-slot]'), item: el => el.closest('[data-design-el]'), contains: (a, b) => a.contains(b) });
   }
+  const imageAt = (x, y) => { const node = actionableAt(x, y); return imageKind(node) ? node : null; };
   function describe(node) {
-    const icon = node.closest('[data-icon-slot]')?.dataset.iconSlot;
+    const image = node.closest(IMAGE_SELECTOR), imgKind = imageKind(image);
+    const icon = imgKind === 'icon' ? image.dataset.iconSlot : undefined;
+    const imageSlot = imgKind === 'mark' ? image.dataset.imageSlot || '' : undefined;
     const slot = !icon && node.closest('[data-design-slot]')?.dataset.designSlot;
     const def = screenSlots(scene).find(s => s.id === slot);
-    const image = node.closest('.tlogo,.pphoto,.league-logo,.spons-item,.sp-tile');
-    const kind = icon ? 'icon' : image ? image.matches('.tlogo') ? 'team' : image.matches('.pphoto') ? 'player' : image.matches('.league-logo') ? 'league' : 'sponsor' : def ? def.editable ? 'text' : 'data' : 'container';
+    const kind = imgKind || (def ? def.editable ? 'text' : 'data' : 'container');
+    // A record image only takes a reference of its own kind (a TBD logo inside a match must not open the match).
+    const near = node.closest('[data-ref]')?.dataset.ref || '';
+    const ref = ['team', 'player', 'sponsor'].includes(kind) ? (near.startsWith(`${kind}:`) ? near : '') : near;
     const r = node.getBoundingClientRect();
-    return { slot, icon, kind, hideSlot: icon ? node.closest('[data-design-slot]')?.dataset.designSlot : null, editable: !!def?.editable, label: icon ? `${icon} icon` : image ? { team: 'Team logo', player: 'Player photo', league: 'Tournament logo', sponsor: 'Sponsor' }[kind] : def?.label,
-      ref: node.closest('[data-ref]')?.dataset.ref || '', text: node.textContent.trim(), rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
+    return { slot, icon, imageSlot, kind, hideSlot: icon ? node.closest('[data-design-slot]')?.dataset.designSlot : null, editable: !!def?.editable, label: imgKind ? imageLabel(imgKind, icon || imageSlot) : def?.label,
+      ref, text: node.textContent.trim(), rect: { x: r.x, y: r.y, w: r.width, h: r.height } };
   }
   function activate(node) {
     if (editing) return;
@@ -264,7 +265,12 @@ export function createLayoutEditor(post) {
     root?.style.setProperty('--le-px', `${1 / viewScale}px`);
     overlay.hidden = !enabled;
     if (!enabled || !root) return;
-    if (hover && hover.isConnected && (!selection || hover.dataset.designEl !== selection.id)) placeBox(div('le-box is-hover', overlay), hover.getBoundingClientRect());
+    if (hoverImage?.isConnected && !editing) {
+      // An image says how to change it: outline + "Double-click to change".
+      const box = div('le-box is-hover is-image', overlay);
+      placeBox(box, hoverImage.getBoundingClientRect());
+      div('le-tag le-hint', box).textContent = 'Double-click to change';
+    } else if (hover && hover.isConnected && (!selection || hover.dataset.designEl !== selection.id)) placeBox(div('le-box is-hover', overlay), hover.getBoundingClientRect());
     const main = primary();
     if (main && !editing) {
       for (const node of linked()) if (node !== main) placeBox(div('le-box is-linked', overlay), node.getBoundingClientRect());
@@ -277,6 +283,9 @@ export function createLayoutEditor(post) {
       }
       const tag = div('le-tag', box);
       tag.textContent = def.label;
+      // The image that the toolbar's "Change image…" acts on, when it is smaller than the selected element.
+      const image = [target, pointImage].find(n => n?.isConnected && n !== main && imageKind(n));
+      if (image && image !== hoverImage) placeBox(div('le-box is-target', overlay), image.getBoundingClientRect());
     }
     for (const g of guides) {
       const line = div(`le-guide le-guide-${g.axis}`, overlay);
@@ -385,15 +394,18 @@ export function createLayoutEditor(post) {
     if (!chain.length) { select('background'); return; }
     const hit = chain.find(n => n.dataset.designEl === selection?.id && indexOf(n) === selection.index) || chain[0];
     select(hit.dataset.designEl, indexOf(hit));
-    target = hit === chain[0] ? actionableAt(e.clientX, e.clientY) || hit : hit;
-    announce(); startDrag(e, 'move');
+    const pick = actionableAt(e.clientX, e.clientY);
+    target = hit === chain[0] ? pick || hit : hit;
+    pointImage = pick !== target && imageKind(pick) ? pick : null;
+    draw(); announce(); startDrag(e, 'move');
   }
 
   function onMove(e) {
     if (!enabled || editing) return;
     if (!drag) {
       const top = root ? chainAt(e.clientX, e.clientY)[0] ?? null : null;
-      if (top !== hover) { hover = top; draw(); }
+      const image = root ? imageAt(e.clientX, e.clientY) : null;
+      if (top !== hover || image !== hoverImage) { hover = top; hoverImage = image; draw(); }
       return;
     }
     const dx = e.clientX - drag.startX;
@@ -446,7 +458,7 @@ export function createLayoutEditor(post) {
   addEventListener('pointerup', onUp, true);
   addEventListener('pointercancel', onUp, true);
   addEventListener('keydown', onKey);
-  document.addEventListener('pointerleave', () => { if (!drag && hover) { hover = null; draw(); } });
+  document.addEventListener('pointerleave', () => { if (!drag && (hover || hoverImage)) { hover = null; hoverImage = null; draw(); } });
 
   return {
     /** A new render of the preview. */
@@ -456,13 +468,14 @@ export function createLayoutEditor(post) {
       root = next;
       scene = data.scene;
       map = structuredClone(data.graphicDesign?.layouts?.[scene] || {});
-      hover = null;
+      hover = null; hoverImage = null;
       root.classList.toggle('le-editing', enabled);
       listElements();
       if (selection) {
         select(selection.id, selection.index);
         const main = primary();
-        const selector = previous?.icon ? `[data-icon-slot="${CSS.escape(previous.icon)}"]` : previous?.slot ? `[data-design-slot="${CSS.escape(previous.slot)}"]` : { team: '.tlogo', player: '.pphoto', league: '.league-logo', sponsor: '.spons-item,.sp-tile' }[previous?.kind];
+        const images = { team: '[data-image="team"],.tlogo', player: '[data-image="player"],.pphoto', league: '[data-image="league"],.league-logo', sponsor: '[data-image="sponsor"],.spons-item,.sp-tile', event: '[data-image="event"]', mark: `[data-image-slot="${CSS.escape(previous?.imageSlot || '')}"]` };
+        const selector = previous?.icon ? `[data-icon-slot="${CSS.escape(previous.icon)}"]` : images[previous?.kind] || (previous?.slot ? `[data-design-slot="${CSS.escape(previous.slot)}"]` : null);
         if (selector && main) { target = main.matches(selector) ? main : main.querySelector(selector); announce(); }
       } else { draw(); if (background) announce(); }
     },

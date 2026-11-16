@@ -2,15 +2,17 @@
 // Designed to sit over gameplay / camera with bg=0; never shows sponsors.
 import { h, fit, plate, crest, laurel, scoreBlock, statusBadge, stageText } from '../ui.js';
 import { whenBits, dotted, leagueLine } from './common.js';
+import { isStreamSc } from '../stream-sc.js';
 
-function wing(team, key) {
+function wing(team, key, sc = false) {
   const label = team?.tag || team?.name || 'TBD';
   return h('div', { class: `sv-wing sv-${key}`, 'data-ref': team?.id ? `team:${team.id}` : null, in: key === 'a' ? 'wipel' : 'wipe', d: 300, dur: 700 },
     h('div', { class: 'sv-wing-bg' }),
     crest(team, 'sv-crest', { in: 'scale', d: 560, dur: 700 }),
     h('div', { class: 'sv-text' },
       fit('sv-tag display', label),
-      team?.tag && team?.name ? fit('sv-name', team.name) : null));
+      // SUPER CUP: a long full name may take two lines under the tag instead of shrinking away.
+      team?.tag && team?.name ? fit('sv-name', team.name, sc ? { 'data-lines': 2 } : {}) : null));
 }
 
 export default {
@@ -26,8 +28,8 @@ export default {
       h('div', { class: 'sv-kicker', in: 'fade', d: 200 },
         laurel('l', 'sv-laurel'), h('span', {}, leagueLine(data.league)), laurel('r', 'sv-laurel')),
       h('div', { class: 'sv-band', 'data-ref': m.id ? `match:${m.id}` : null },
-        wing(data.teamA, 'a'),
-        wing(data.teamB, 'b'),
+        wing(data.teamA, 'a', isStreamSc(data)),
+        wing(data.teamB, 'b', isStreamSc(data)),
         h('div', { class: `sv-mid ${scored ? 'has-score' : ''}`, in: 'pop', d: 420 },
           scored ? scoreBlock({ ...m, scoreA: m.scoreA ?? 0, scoreB: m.scoreB ?? 0 }, 'sv-score') : h('span', { class: 'sv-vs' }, 'VS'))),
       meta.length || badge

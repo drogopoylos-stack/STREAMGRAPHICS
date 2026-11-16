@@ -21,6 +21,8 @@ const DEFAULT_SETTINGS = {
   // Social graphics: 'classic' keeps the current social scenes, 'supercup' uses the SUPERCUP 2027 look.
   socialStyle: 'classic',
   socialLogo: '',
+  // Live stream graphics (1920×1080): 'classic' keeps the current look, 'supercup' uses the SUPER CUP 2027 look.
+  streamStyle: 'classic',
   // preset picks the plates /brand/<preset>-main.jpg, -versus.jpg, -stage.jpg ('sparta' = league logo colours, 'aegean' = navy/gold).
   theme: { preset: 'sparta', primary: '#141414', accent: '#c8102e', accent2: '#f2c230', text: '#ffffff', bgImage: null, socialBgPost: null, socialBgStory: null },
   bracketEmbed: '',
@@ -41,6 +43,7 @@ const DEFAULT_SETTINGS = {
   drive: { apiKey: '' },
   hllgr: { baseUrl: 'https://hll.gr', cookie: '' },
   sponsorsOnGraphics: true,
+  sponsorsOnSocial: true,
   leagueLogo: '/brand/hll-logo.png',
 };
 
@@ -68,6 +71,8 @@ const imageUrl = (value) => value == null || value === '' || (typeof value === '
 export function validateSettings(body = {}) {
   if (body.socialStyle !== undefined && !['classic', 'supercup'].includes(body.socialStyle)) throw failure(400, 'Choose classic or supercup for the social graphics style');
   if (body.socialLogo !== undefined && !imageUrl(body.socialLogo)) throw failure(400, 'The social logo must be an image URL or empty');
+  if (body.streamStyle !== undefined && !['classic', 'supercup'].includes(body.streamStyle)) throw failure(400, 'Choose classic or supercup for the live stream graphics style');
+  for (const key of ['sponsorsOnGraphics', 'sponsorsOnSocial']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw failure(400, `${key} must be on or off`);
   if (body.theme !== undefined) {
     if (body.theme === null || typeof body.theme !== 'object' || Array.isArray(body.theme)) throw failure(400, 'Theme must be an object');
     for (const key of ['socialBgPost', 'socialBgStory']) {

@@ -1,5 +1,6 @@
 import { h, fit, plate, teamLogo, svg } from '../ui.js';
 import { sceneHeader, leagueLine } from './common.js';
+import { isStreamSc } from '../stream-sc.js';
 
 const W = 1712, H = 650, GAP = 54, CARD_H = 118;
 function when(match) {
@@ -62,7 +63,7 @@ function doubleElimination(data, ctx) {
 export default {
   render(data, ctx) {
     if (data.tree.rounds.some(r => r.side === 'upper')) return doubleElimination(data, ctx);
-    const rounds = [...data.tree.rounds, ...(data.tree.qualifications?.length ? [{ id: 'qualified', name: data.tree.qualifications.map(q => q.name).join(' / '), matches: [], qualifications: data.tree.qualifications }] : [])];
+    const rounds = [...data.tree.rounds, ...(data.tree.qualifications?.length ? [{ id: 'qualified', name: (isStreamSc(data) ? [...new Set(data.tree.qualifications.map(q => q.name))] : data.tree.qualifications.map(q => q.name)).join(' / '), matches: [], qualifications: data.tree.qualifications }] : [])];
     const width = (W - GAP * (rounds.length - 1)) / rounds.length;
     const positions = new Map();
     const cards = [];

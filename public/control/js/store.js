@@ -88,6 +88,7 @@ export function connectStream() {
   es.addEventListener('error', () => setConn(false));
   es.addEventListener('state', () => store.refresh());
   es.addEventListener('sync', (ev) => { try { window.dispatchEvent(new CustomEvent('hll:sync', { detail: JSON.parse(ev.data) })); } catch { /* ignore a bad event */ } });
+  es.addEventListener('remote', (ev) => { try { window.dispatchEvent(new CustomEvent('hll:remote', { detail: JSON.parse(ev.data) })); } catch { /* ignore a bad event */ } });
   es.addEventListener('live', (ev) => {
     try { setLive(JSON.parse(ev.data)); } catch { /* ignore */ }
   });

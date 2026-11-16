@@ -11,9 +11,11 @@ import { DATA } from './util.js';
 
 const QUIET_MS = 60_000;      // upload after one minute without changes
 const CHECK_MS = 10 * 60_000; // look for updates from other PCs every ten minutes
+const MAX_WAIT_MS = 5 * 60_000; // upload at the latest five minutes after the first change (the sheet sync changes data often)
 
 const state = { enabled: false, status: 'off', lastUpload: null, lastCheck: null, behind: 0, pending: false, message: '' };
 let timer = null;
+let firstChange = 0;
 let running = null;
 let notify = () => {};
 let reloaded = () => {};
@@ -93,14 +95,16 @@ export function startDataSync(store, onState = () => {}, onReload = () => {}) {
   if (!fs.existsSync(path.join(DATA, '.git'))) return;
   set({ enabled: true, status: 'synced' });
   store.onChange(() => {
-    set({ pending: true });
+    if (!state.pending) set({ pending: true });
+    firstChange ||= Date.now();
     clearTimeout(timer);
-    timer = setTimeout(() => run(store, () => upload(store)), QUIET_MS);
+    const wait = Math.max(0, Math.min(QUIET_MS, firstChange + MAX_WAIT_MS - Date.now()));
+    timer = setTimeout(() => { firstChange = 0; run(store, () => upload(store)); }, wait);
   });
   const check = () => run(store, async () => {
     await git('fetch', '-q', 'origin');
     const behind = Number(await git('rev-list', '--count', 'HEAD..@{u}').catch(() => '0'));
-    set({ status: state.pending ? 'syncing' : 'synced', behind, lastCheck: new Date().toISOString() });
+    set({ status: 'synced', behind, lastCheck: new Date().toISOString() });
   });
   check();
   setInterval(check, CHECK_MS).unref();
@@ -110,6 +114,7 @@ export function startDataSync(store, onState = () => {}, onReload = () => {}) {
 export function syncNow(store) {
   if (!state.enabled) return Promise.resolve(syncState());
   clearTimeout(timer);
+  firstChange = 0;
   return run(store, async () => {
     await upload(store);
     store.load();

@@ -79,6 +79,11 @@ export function applyGraphicDesign(root, data) {
   }
   if (!config) return root;
   applyIcons(root, config.assets, data.theme);
+  // Brand images of a style that this design replaces (Graphics designer: double-click the image).
+  for (const img of root.querySelectorAll('img[data-image-slot]')) {
+    const url = config.assets.customImages?.[img.dataset.imageSlot];
+    if (url) img.src = url;
+  }
   tagLayoutElements(root, data);
   root.classList.add('has-graphic-design');
   const font = role => DESIGN_FONTS.find(f => f.id === config.fonts?.[role])?.css;

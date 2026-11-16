@@ -2,7 +2,8 @@ import { h, setKids, debounce } from '../dom.js';
 import { api } from '../api.js';
 import { store } from '../store.js';
 import { btn, busy, toast, toastError, panel, field, ctlSelect, ctlSegmented, ctlText, ctlNumber, ctlToggle, ctlRange, ctlColor, confirmDialog, openDrawer, closeDrawer } from '../ui.js';
-import { DESIGN_FONTS, FONT_ROLES, EMPTY_DESIGN, FRAME_STYLES, BOX_STYLES, TEXT_TOKENS, LAYOUT_LIMITS, screenSlots, normalizeDesign, BG_MOTIONS, BG_SPEEDS, BG_INTENSITIES, resolveBackground, expandDesignText } from '../../../shared/graphic-design.js';
+import { DESIGN_FONTS, FONT_ROLES, EMPTY_DESIGN, FRAME_STYLES, BOX_STYLES, TEXT_TOKENS, LAYOUT_LIMITS, screenSlots, normalizeDesign, BG_MOTIONS, BG_SPEEDS, BG_INTENSITIES, resolveBackground, expandDesignText, DESIGN_IMAGES } from '../../../shared/graphic-design.js';
+import { IMAGE_KINDS, changeLabel } from '../../../overlay/js/editor-images.js';
 import { SCENE_DEFINITIONS, sceneDefinition, dimensionsFor } from '../../../shared/scenes.js';
 import { ICON_SETS, ICON_SLOTS, iconSvg } from '../../../shared/icon-sets.js';
 
@@ -86,8 +87,9 @@ export function mount(root) {
   const previewStatus = h('p.field-hint', { role: 'status' }, 'Loading preview…');
   const quick = h('div.design-quick');
   const toolbar = h('div.design-toolbar', { role: 'toolbar', hidden: true });
-  const previewPanel = h('aside.design-preview-panel', panel('Live preview', quick, canvas, toolbar, previewStatus,
-    h('p.field-hint', 'Click to select \u00b7 Drag to move \u00b7 Double-click to edit text or replace an image \u00b7 Esc selects the parent')));
+  const tip = h('p.design-preview-tip', 'Double-click a text to edit it. Double-click an image or icon to change it.');
+  const previewPanel = h('aside.design-preview-panel', panel('Live preview', quick, tip, canvas, toolbar, previewStatus,
+    h('p.field-hint', 'Click to select \u00b7 Drag to move \u00b7 Esc selects the parent')));
   const designLayout = h('div.design-layout', controls, previewPanel);
   root.append(h('header.section-head', h('div.section-titles', h('h1.section-title', 'Graphics designer'), h('p.section-sub', 'One editor and preset library for every tournament.')), h('span.design-scope', 'GLOBAL LIBRARY')),
     h('div.design-action-bar', h('div', status, applied), h('div.design-actions', reset, saveAs, apply)), tabs,
@@ -281,7 +283,7 @@ function layoutPanel() {
   const stack = h('div.design-stack',
     panel('Selected element', h('p.panel-sub', `${sceneDefinition(scene).label} · Each screen has its own layout.`), empty, editor),
     panel('Elements on this screen', h('div.design-actions', undo, redo, resetAll), list),
-    panel('How to edit', h('ul.layout-hints', h('li', 'Drag an element to move it. Guides show the alignment. Hold Alt to turn them off.'), h('li', 'Drag a corner to scale. Drag a side to change the width or height.'), h('li', 'Double-click to edit text or replace an image. Esc selects the parent.'), h('li', 'Use the arrow keys for 1 px steps. Add Shift for 10 px.'), h('li', 'Ctrl+Z undoes a change. An element inside a card stays inside the edge of that card.'))));
+    panel('How to edit', h('ul.layout-hints', h('li', 'Drag an element to move it. Guides show the alignment. Hold Alt to turn them off.'), h('li', 'Drag a corner to scale. Drag a side to change the width or height.'), h('li', 'Double-click a text to edit it. Double-click an image or icon to change it. Esc selects the parent.'), h('li', 'Use the arrow keys for 1 px steps. Add Shift for 10 px.'), h('li', 'Ctrl+Z undoes a change. An element inside a card stays inside the edge of that card.'))));
   paintLayoutSelection(); paintLayoutList();
   return stack;
 }
@@ -549,11 +551,16 @@ function placeTools() {
   place(els.toolbar); place(popover, 50);
 }
 function tool(label, glyph, action) { return h('button', { type: 'button', title: label, 'aria-label': label, onclick: action }, glyph); }
+/** A toolbar button that shows its words: the main action of an image ("Change image…"). */
+function textTool(label, action) { return h('button.design-tool-text', { type: 'button', onclick: action }, label); }
+const isImage = kind => IMAGE_KINDS.includes(kind);
 function paintToolbar() {
   if (!els) return;
   const s = layoutSelection, bar = els.toolbar;
   if (!s || pointerDown || previewBusy) { bar.hidden = true; return; }
   const buttons = [];
+  // A click on an image inside a larger selected element keeps that element selected; it still offers the image.
+  if (s.image && !isImage(s.kind)) buttons.push(textTool(changeLabel(s.image.kind), () => finishEdit(() => openSelection({ ...s, ...s.image, image: null }))));
   if (s.kind === 'text' || s.kind === 'data') {
     buttons.push(tool(s.editable ? 'Edit text' : 'Where does this come from?', s.editable ? '✎' : 'ⓘ', () => s.editable ? sendLayout('edit') : openSelection()));
     if (s.editable) {
@@ -563,11 +570,11 @@ function paintToolbar() {
     buttons.push(tool('Font & size…', 'Aa', fontAndSize), tool('Hide', '◌', () => finishEdit(() => hideSlot())));
   } else if (s.kind === 'icon') {
     const tint = tool('Theme colour', '◐', () => { config.assets.iconTint = !config.assets.iconTint; changed(`Icon · ${s.icon}`); }); tint.setAttribute('aria-pressed', String(config.assets.iconTint));
-    buttons.push(tool('Replace icon…', '↥', openSelection), tint);
+    buttons.push(textTool(changeLabel('icon'), () => openSelection()), tint);
     if (s.hideSlot) buttons.push(tool('Hide', '◌', () => hideSlot(s.hideSlot)));
-  } else if (['team', 'player', 'league', 'sponsor'].includes(s.kind)) {
-    buttons.push(tool(s.kind === 'sponsor' ? 'Edit sponsor…' : s.kind === 'player' ? 'Replace photo…' : 'Replace logo…', '↥', openSelection));
-    if (['team', 'player'].includes(s.kind) && s.ref && !previewData?.previewSample) buttons.push(tool(`Edit ${s.kind}…`, '✎', () => editRecord(s.ref)));
+  } else if (isImage(s.kind)) {
+    buttons.push(textTool(changeLabel(s.kind), () => openSelection()));
+    if (['team', 'player', 'sponsor'].includes(s.kind) && s.ref && !previewData?.previewSample) buttons.push(tool(`Edit ${s.kind}…`, '✎', () => editRecord(s.ref)));
   } else if (s.kind === 'background') {
     const bg = resolveBackground(config, scene);
     const show = tool('Show on this screen', bg.show ? 'On' : 'Off', () => setBackground({ show: !bg.show })); show.setAttribute('aria-pressed', String(bg.show));
@@ -658,27 +665,64 @@ function iconPicker(slot) {
   dialog(label, emblem, h('h4', 'Only this icon'), choices(), h('div.design-actions', upload, config.assets.customIcons[slot] ? btn('Remove my icon', { size: 'sm', onclick: () => { delete config.assets.customIcons[slot]; changed(`Icon · ${slot}`); iconPicker(slot); if (tab === 'icons') paintTab(); } }) : null),
     h('h4', 'Style for all icons'), choices(true), h('p.field-hint', 'Changes every icon on every screen.'), tint.el);
 }
-function openSelection() {
-  const s = layoutSelection;
+/** SUPER CUP social header logo (settings.socialLogo): one image for every social graphic of the tournament. */
+async function uploadEventLogo(file) {
+  // The brand upload stores the file as the tournament logo; the social header then uses the same file.
+  const settings = await api.brandUpload('league-logo', file);
+  await api.put('/api/settings', { socialLogo: settings.leagueLogo });
+  await store.load(); queuePreview(); toast('Logo updated for this tournament.', 'ok'); closePopover();
+}
+function eventLogoDialog() {
+  const typed = btn('Use the typed header', { size: 'sm', onclick: async () => {
+    try { await api.put('/api/settings', { socialLogo: '' }); await store.load(); queuePreview(); closePopover(); toast('The social header shows the mark, the year and the title again.', 'ok'); } catch (e) { toastError(e); }
+  } });
+  dialog('Event logo', h('p', 'The logo at the top of every social graphic of this tournament.'),
+    h('div.design-actions', uploadButton('Replace logo…', uploadEventLogo), typed),
+    h('p.field-hint', 'The new file is also the tournament logo of the stream graphics.'), immediateNote());
+}
+/** A brand image of the style (HLL logo, header mark): replaced in this design only, like an icon. */
+function designImagePicker(slot) {
+  const def = DESIGN_IMAGES.find(d => d.id === slot);
+  if (!def) return;
+  const custom = config.assets.customImages?.[slot];
+  const upload = uploadButton(custom ? 'Replace my image…' : 'Upload your own…', async file => {
+    const form = new FormData(); form.append('file', file);
+    const { url } = await api.post('/api/design/icons', form);
+    config.assets.customImages = { ...config.assets.customImages, [slot]: url }; changed(`Image · ${def.label}`); designImagePicker(slot);
+  });
+  const original = custom ? btn('Use the original', { size: 'sm', onclick: () => {
+    delete config.assets.customImages[slot]; if (!Object.keys(config.assets.customImages).length) delete config.assets.customImages;
+    changed(`Image · ${def.label}`); designImagePicker(slot);
+  } }) : null;
+  const logo = slot === 'lettermark' ? [h('h4', 'One logo image instead'), h('p.field-hint', 'Replaces the mark, the year and the title of every social graphic.'), h('div.design-actions', uploadButton('Upload a logo…', uploadEventLogo)), immediateNote()] : [];
+  dialog(def.label, h('p', def.hint), h('h4', 'Only this image'), h('div.design-actions', upload, original),
+    h('p.field-hint', 'Part of this design: Apply to use it on live graphics. A transparent PNG or SVG works best.'), ...logo);
+}
+function openSelection(s = layoutSelection) {
   if (!s) return;
   if (s.kind === 'background') { motionMenu(); return; }
   if (s.kind === 'icon') { iconPicker(s.icon); return; }
   if (s.kind === 'text') { sendLayout('edit'); return; }
+  if (s.kind === 'event') { eventLogoDialog(); return; }
+  if (s.kind === 'mark') { designImagePicker(s.imageSlot); return; }
   const [refKind, ...parts] = (s.ref || '').split(':'), recordId = parts.join(':');
   const record = ({ team: store.team, player: store.player, match: store.match, sponsor: store.sponsor }[refKind])?.call(store, recordId);
   if (['team', 'player', 'league', 'sponsor'].includes(s.kind)) {
     if (previewData?.previewSample && s.kind !== 'league') {
       dialog(s.label, h('p', 'These are sample names for the preview. Add your teams and players to see them here.'), btn('Open Teams', { onclick: () => { closePopover(); location.hash = '#/teams'; } }), immediateNote()); return;
     }
-    if (s.kind === 'team' && !recordId) { iconPicker('Team'); return; }
-    const kind = s.kind, label = kind === 'player' ? 'photo' : 'logo';
-    const body = { team: 'Logos belong to the team. A new logo shows on every graphic right away.', player: 'Photos belong to the player. The background is removed automatically.', league: 'Shown on every graphic of this tournament.', sponsor: 'Sponsor logos come from Sponsors.' }[kind];
-    const upload = kind === 'sponsor' ? null : uploadButton(`Replace ${label}…`, async file => {
-      const ok = kind === 'league' ? await api.brandUpload('league-logo', file) : await (kind === 'team' ? teams : players).upload(recordId, file);
+    if (s.kind === 'team' && !recordId) {
+      dialog('Unknown team', h('p', 'This place has no team yet. The team logo shows here when the match has its team.'),
+        h('div.design-actions', btn('Open Matches', { size: 'sm', onclick: () => { closePopover(); location.hash = '#/matches'; } }), btn('Change the TBD icon…', { size: 'sm', onclick: () => iconPicker('Team') }))); return;
+    }
+    const kind = s.kind, label = kind === 'player' ? 'photo' : 'logo', name = record?.name || record?.nick;
+    const body = { team: 'Logos belong to the team. A new logo shows on every graphic right away.', player: 'Photos belong to the player. The background is removed automatically.', league: 'Shown on every graphic of this tournament.', sponsor: 'Logos belong to the sponsor. A new logo shows on every graphic right away.' }[kind];
+    const upload = kind !== 'league' && !recordId ? null : uploadButton(`Replace ${label}…`, async file => {
+      const ok = kind === 'league' ? await api.brandUpload('league-logo', file) : kind === 'sponsor' ? await api.upload('sponsor', recordId, file) : await (kind === 'team' ? teams : players).upload(recordId, file);
       if (ok === false) return;
-      await store.load(); queuePreview(); toast(`${titleCase(label)} updated${record ? ` for ${record.name || record.nick}` : ''}.`, 'ok'); closePopover();
+      await store.load(); queuePreview(); toast(`${titleCase(label)} updated${name ? ` for ${name}` : ''}.`, 'ok'); closePopover();
     });
-    dialog(`${s.label}${record ? ` · ${record.name || record.nick}` : ''}`, h('p', body), h('div.design-actions', upload, kind !== 'league' ? btn(`Edit ${kind}…`, { size: 'sm', onclick: () => editRecord(s.ref) }) : null), immediateNote()); return;
+    dialog(`${s.label}${name ? ` · ${name}` : ''}`, h('p', body), h('div.design-actions', upload, kind !== 'league' && recordId ? btn(`Edit ${kind}…`, { size: 'sm', onclick: () => editRecord(s.ref) }) : null), immediateNote()); return;
   }
   const slot = s.slot;
   let kind = ['teams'].includes(slot) ? 'team' : ['players', 'roles'].includes(slot) ? 'player' : ['sponsors'].includes(slot) || scene === 'sponsors' && slot === 'names' ? 'sponsor' : 'match';
