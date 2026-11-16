@@ -1,9 +1,10 @@
 // Shared plumbing for the overlay pages: query flags, stage scaling, data, SSE, fonts, auto-fit, readiness.
+import { BG_MOTIONS } from '../../shared/graphic-design.js';
 export const W = 1920;
 export const H = 1080;
 export const TZ = 'Europe/Athens';
 
-const RESERVED = new Set(['scene', 'static', 'bg', 'mode', 'data']);
+const RESERVED = new Set(['scene', 'static', 'bg', 'motion', 'mode', 'data', 'designer']);
 
 /** Parse the page query: scene + params + flags (static, bg, mode, data). */
 export function readFlags(search = location.search) {
@@ -13,9 +14,11 @@ export function readFlags(search = location.search) {
   const mode = q.get('mode');
   return {
     scene: q.get('scene') || null,
+    designer: q.get('designer') === '1',
     params,
     static: q.get('static') === '1',
-    bg: q.get('bg') !== '0',
+    bg: q.get('bg') === '0' ? false : q.get('bg') === '1' ? true : null,
+    motion: BG_MOTIONS.includes(q.get('motion')) ? q.get('motion') : null,
     mode: mode === 'simple' || mode === 'full' ? mode : null,
     data: q.get('data') || null, // dev aid: load scene data from a JSON file instead of the API
   };
@@ -112,9 +115,19 @@ export function themeVars(theme = {}) {
   return out;
 }
 
-/** Background plate URL. kind = main | versus | stage. theme.bgImage overrides the main plate. */
-export function plateUrl(theme = {}, kind = 'main') {
-  const custom = kind === 'social' ? theme.socialBgImage || theme.bgImage : kind === 'versus' ? theme.versusBgImage || theme.bgImage : theme.bgImage;
+/** Background plate URL. kind = main | versus | stage | social. theme.bgImage overrides the main plate. */
+export function plateUrl(theme = {}, kind = 'main', ctx = {}) {
+  if (kind === 'social') {
+    // A custom tournament social background always wins; then the format plate (SUPERCUP post/story); then the main image/preset.
+    if (theme.socialBgImage) return theme.socialBgImage;
+    const format = ctx?.format === 'post' || ctx?.params?.format === 'post' ? 'post' : 'story';
+    const formatPlate = format === 'post' ? theme.socialBgPost : theme.socialBgStory;
+    if (formatPlate) return formatPlate;
+    if (theme.bgImage) return theme.bgImage;
+    const preset = theme.preset === 'aegean' ? 'aegean' : (theme.preset || 'sparta');
+    return `/brand/${preset}-main.jpg`;
+  }
+  const custom = kind === 'versus' ? theme.versusBgImage || theme.bgImage : theme.bgImage;
   if (custom) return custom;
   const preset = theme.preset === 'aegean' ? 'aegean' : (theme.preset || 'sparta');
   return `/brand/${preset}-${kind === 'social' ? 'main' : kind}.jpg`;
@@ -126,6 +139,8 @@ const FACES = [
   '400 20px "Fira Sans Extra Condensed"', '600 20px "Fira Sans Extra Condensed"', '700 20px "Fira Sans Extra Condensed"',
   '800 20px "Fira Sans Extra Condensed"', '900 20px "Fira Sans Extra Condensed"', 'italic 900 20px "Fira Sans Extra Condensed"',
   '400 20px "Fira Sans Condensed"', '500 20px "Fira Sans Condensed"', '600 20px "Fira Sans Condensed"', '700 20px "Fira Sans Condensed"',
+  '700 20px "Sofia Sans Extra Condensed Variable"', '800 20px "Sofia Sans Extra Condensed Variable"', '900 20px "Sofia Sans Extra Condensed Variable"',
+  '700 20px "Sofia Sans Variable"', '800 20px "Sofia Sans Variable"',
   '600 20px "Commissioner Variable"', '800 20px "Commissioner Variable"',
   'italic 600 20px "Noto Serif Display"', '700 20px "Noto Serif Display"', 'italic 800 20px "Noto Serif Display"',
 ];

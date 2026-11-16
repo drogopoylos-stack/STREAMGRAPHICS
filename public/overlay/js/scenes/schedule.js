@@ -33,13 +33,13 @@ function row(m, i, lines, showDates = false) {
   const done = m.status === 'done';
   const aWin = done && Number(m.scoreA) > Number(m.scoreB);
   const bWin = done && Number(m.scoreB) > Number(m.scoreA);
-  return h('div', { class: `srow ${live ? 'is-live' : ''} ${done ? 'is-done' : ''}`, in: 'left', d: 560 + i * 90, dur: 650 },
+  return h('div', { 'data-ref': m.id ? `match:${m.id}` : null, class: `srow ${live ? 'is-live' : ''} ${done ? 'is-done' : ''}`, in: 'left', d: 560 + i * 90, dur: 650 },
     h('div', { class: 'sc-time' }, h('span', {}, m.time || 'TBD'), showDates ? h('span', { class: 'sc-date-small' }, m.date ? `${m.date.slice(8, 10)}/${m.date.slice(5, 7)}` : 'Date TBD') : null),
-    h('div', { class: `sc-team sc-a ${bWin ? 'is-lose' : ''}` },
+    h('div', { 'data-ref': m.teamA?.id ? `team:${m.teamA.id}` : null, class: `sc-team sc-a ${bWin ? 'is-lose' : ''}` },
       fit('sc-name display', m.teamA?.name || 'TBD', nameProps),
       teamLogo(m.teamA, 'sc-logo')),
     centreCell(m),
-    h('div', { class: `sc-team sc-b ${aWin ? 'is-lose' : ''}` },
+    h('div', { 'data-ref': m.teamB?.id ? `team:${m.teamB.id}` : null, class: `sc-team sc-b ${aWin ? 'is-lose' : ''}` },
       teamLogo(m.teamB, 'sc-logo'),
       fit('sc-name display', m.teamB?.name || 'TBD', nameProps)),
     h('div', { class: 'sc-info' },

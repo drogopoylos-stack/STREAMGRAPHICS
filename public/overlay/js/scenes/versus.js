@@ -2,9 +2,10 @@
 // both starting fives. Team A sits on the crimson side of the plate, team B on the gold side.
 import { h, fit, plate, crest, playerPhoto, roleIcon, roleLabel, laurel, leagueLogo, recordText, hasScore, scoreBlock, statusBadge, stageText } from '../ui.js';
 import { splitRoster, whenBits, dotted, sponsorsFor } from './common.js';
+import { textVersus } from './text-lineups.js';
 
 function miniCard(p, i, d) {
-  return h('div', { class: 'mcard', in: 'up', d: d + i * 70, dur: 650 },
+  return h('div', { class: 'mcard', 'data-ref': p.id ? `player:${p.id}` : null, in: 'up', d: d + i * 70, dur: 650 },
     h('div', { class: 'mc-glow' }),
     playerPhoto(p, 'mc-photo'),
     h('div', { class: 'mc-info' },
@@ -14,7 +15,7 @@ function miniCard(p, i, d) {
 
 function side(team, record, key, simple) {
   const dir = key === 'a' ? 'left' : 'right';
-  return h('div', { class: `vs-side vs-${key}` },
+  return h('div', { class: `vs-side vs-${key}`, 'data-ref': team?.id ? `team:${team.id}` : null },
     h('div', { class: 'vs-side-bg', in: 'fade', d: 250 }),
     crest(team, 'vs-crest', { in: 'scale', d: key === 'a' ? 320 : 400, dur: 800 }),
     fit('vs-name display', team?.name || 'TBD', { in: dir, d: 520, 'data-min': 34, 'data-wrap': 2 }),
@@ -34,6 +35,7 @@ function centre(m) {
 
 export default {
   render(data, ctx) {
+    if (data.rosterStyle === 'text') return textVersus(data, ctx);
     const simple = ctx.mode === 'simple';
     const m = data.match || {};
     const stage = stageText(m) || data.league?.name || '';
@@ -42,7 +44,7 @@ export default {
     const lineB = simple ? [] : splitRoster(data.playersB || []).starters;
     const lineups = lineA.length || lineB.length;
 
-    return h('div', { class: `${lineups ? 'has-lineups' : 'no-lineups'} ${spons ? 'has-spons' : ''}` },
+    return h('div', { 'data-ref': m.id ? `match:${m.id}` : null, class: `${lineups ? 'has-lineups' : 'no-lineups'} ${spons ? 'has-spons' : ''}` },
       plate(data.theme, 'versus', ctx),
       h('header', { class: 'vs-top' },
         leagueLogo(data.league, 'vs-llogo', { in: 'scale', d: 150 }),

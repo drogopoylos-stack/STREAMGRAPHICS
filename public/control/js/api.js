@@ -37,7 +37,7 @@ export const api = {
   get: (url) => request('GET', url),
   post: (url, body = {}) => request('POST', url, body),
   put: (url, body = {}) => request('PUT', url, body),
-  del: (url) => request('DELETE', url),
+  del: (url, body) => request('DELETE', url, body),
 
   /** Multipart image upload for a team / player / sponsor. Returns the updated entity. */
   upload(kind, id, file) {

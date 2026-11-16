@@ -36,7 +36,7 @@ export function organizeGraphics(cards, state) {
     if (match) {
       date = match.date || null; time = match.time || '';
       period = periodFor([match], date, state.today);
-    } else if (definition?.target === 'day' && params.day !== 'all') {
+    } else if (definition?.target === 'day' && !params.round && params.day !== 'all') {
       date = !params.day || params.day === 'today' ? state.today : params.day === 'tomorrow' ? addDay(state.today) : params.day;
       period = periodFor(byDate.get(date) ?? [], date, state.today);
     } else if (definition?.target === 'match') {

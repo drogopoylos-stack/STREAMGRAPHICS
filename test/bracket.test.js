@@ -32,12 +32,40 @@ test('bracket advances completed series and clears dependent results after a cor
   assert.equal(bracketTree(db).champion, null);
 });
 
-test('ties, missing scores and incomplete/live series never advance', () => {
-  for (const patch of [{ scoreA: 2, scoreB: 2 }, { scoreA: 2, scoreB: null }, { scoreA: 1, scoreB: 0 }, { scoreA: 2, scoreB: 0, status: 'live' }]) {
+test('ties, missing scores and incomplete series never advance', () => {
+  for (const status of ['done', 'scheduled', 'live']) for (const patch of [{ scoreA: 2, scoreB: 2 }, { scoreA: 2, scoreB: null }, { scoreA: 1, scoreB: 0 }]) {
     const db = fixture();
-    Object.assign(db.matches[0], { status: 'done' }, patch);
-    assert.equal(resolveMatches(db)[2].teamA, null);
+    Object.assign(db.matches[0], { status }, patch);
+    const [first, , final] = resolveMatches(db);
+    assert.equal(final.teamA, null);
+    assert.equal(first.status, status);
   }
+});
+
+test('a decisive score advances the winner and finishes the match, whatever the status says', () => {
+  for (const status of ['scheduled', 'live', 'done']) {
+    const db = fixture();
+    Object.assign(db.matches[0], { scoreA: 1, scoreB: 2, status });
+    const [first, , final] = resolveMatches(db);
+    assert.equal(final.teamA, 'b');
+    assert.equal(first.status, 'done');
+    syncBracket(db);
+    assert.equal(db.matches[2].teamA, 'b');
+  }
+});
+
+test('an unknown best-of needs the done status, and a cleared score takes the winner back', () => {
+  const db = fixture();
+  Object.assign(db.matches[0], { bestOf: null, scoreA: 1, scoreB: 0 });
+  assert.equal(resolveMatches(db)[2].teamA, null);
+  Object.assign(db.matches[0], { status: 'done' });
+  assert.equal(resolveMatches(db)[2].teamA, 'a');
+  Object.assign(db.matches[0], { bestOf: 3, scoreA: 2, scoreB: 0, status: 'scheduled' });
+  syncBracket(db);
+  assert.equal(db.matches[2].teamA, 'a');
+  Object.assign(db.matches[0], { scoreA: null, scoreB: null });
+  syncBracket(db);
+  assert.equal(db.matches[2].teamA, null);
 });
 
 test('winner sources reject cycles, missing matches and unsupported outcomes', () => {
@@ -48,8 +76,8 @@ test('winner sources reject cycles, missing matches and unsupported outcomes', (
   assert.throws(() => validateSources(bad), /cycle/);
   bad[0].teamASource.matchId = 'other-tournament';
   assert.throws(() => validateSources(bad), /in this tournament/);
-  bad[0].teamASource = { matchId: '1-2', outcome: 'loser' };
-  assert.throws(() => validateSources(bad), /winner source/);
+  bad[0].teamASource = { matchId: '1-2', outcome: 'invalid' };
+  assert.throws(() => validateSources(bad), /winner or loser source/);
 });
 
 test('logo-only dashboard, TBD fixtures and paginated schedule remain usable without players', () => {

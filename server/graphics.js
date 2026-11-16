@@ -1,11 +1,14 @@
-import { SCENE_DEFINITIONS, dimensionsFor } from '../public/shared/scenes.js';
+import { SCENE_DEFINITIONS, dimensionsFor, sceneFormats } from '../public/shared/scenes.js';
 import { sceneData, nextMatch } from './scenes.js';
 import { isoDay, newId } from './util.js';
-import { resolvedTournament, matchTeam } from './bracket.js';
+import { resolvedTournament, matchTeam, bracketDefinitions } from './bracket.js';
 
 const clean = params => Object.fromEntries(Object.entries(params ?? {}).filter(([, value]) => value != null && value !== '').map(([key, value]) => [key, String(value)]));
 const teamById = (db, id) => db.teams.find(team => team.id === id);
 const matchTitle = (db, match) => `${matchTeam(db, match, 'A')?.tag ?? 'TBD'} vs ${matchTeam(db, match, 'B')?.tag ?? 'TBD'}`;
+const formatLabel = (format) => format === 'post' ? 'Post' : 'Story';
+// The four new social types ship as post and story cards; the three older ones stay story-only.
+const FORMAT_SCENES = new Set(['social-result', 'social-announce', 'social-bracket', 'social-live']);
 
 /** Every registered scene becomes a dashboard card; new scene types inherit this expansion. */
 export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
@@ -20,9 +23,11 @@ export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
       const data = sceneData(definition.id, params, db);
       if (definition.id === 'bracket' && data.embed.type === 'none' && !data.tree?.rounds.length) { ready = false; reason = 'Add a bracket in Settings'; }
       if (definition.id === 'sponsors' && !data.sponsors.length) { ready = false; reason = 'Add a sponsor logo'; }
+      if (definition.id === 'format' && !data.format) { ready = false; reason = 'Tournament format is not configured'; }
+      if (definition.id === 'social-bracket' && !data.bracket) { ready = false; reason = 'Add a bracket in Settings'; }
       if (definition.target === 'match' && (!data.teamA || !data.teamB)) { ready = false; reason = 'Choose both teams for this match'; }
     } catch (error) { ready = false; reason = error.message; }
-    cards.push({ key: `${definition.id}:${suffix}`, scene: definition.id, params: clean(params), title, sub: reason || sub, group: definition.group, art: art ?? { type: 'icon', icon: 'layers' }, ...dimensionsFor(definition.id), ready, warn: !ready, ...extra });
+    cards.push({ key: `${definition.id}:${suffix}`, scene: definition.id, params: clean(params), title, sub: reason || sub, group: definition.group, art: art ?? { type: 'icon', icon: 'layers' }, ...dimensionsFor(definition.id, params), ready, warn: !ready, ...extra });
   };
   for (const definition of SCENE_DEFINITIONS) {
     if (db.settings.enabledScenes?.length && !db.settings.enabledScenes.includes(definition.id)) continue;
@@ -39,13 +44,29 @@ export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
           const pages = definition.id === 'social-schedule' ? Math.max(1, Math.ceil(count / 6)) : day === 'all' ? Math.max(1, Math.ceil(count / 8)) : 1;
           for (let page = 1; page <= pages; page++) add(definition, `${day}:${page}`, { day, ...(pages > 1 ? { page } : {}) }, `${definition.label} · ${label}${pages > 1 ? ` · ${page}/${pages}` : ''}`, `${date || 'All match days'} · ${count} matches`, { type: 'icon', icon: 'calendar' });
         }
+        // Social schedule also offers one match-day card per bracket round, in post and story.
+        if (definition.id === 'social-schedule') {
+          const brackets = bracketDefinitions(db);
+          brackets.forEach((bracket, bracketIndex) => (bracket.rounds ?? []).forEach((round) => {
+            if (!round.id) return;
+            for (const format of sceneFormats(definition.id)) {
+              add(definition, `round:${bracket.id ?? bracketIndex}:${round.id}:${format}`, { round: round.id, format }, `${definition.label} · ${round.name || round.id} · ${formatLabel(format)}`, `${bracket.name || definition.label} · ${round.matches?.length ?? 0} matches`, { type: 'icon', icon: 'calendar' });
+            }
+          }));
+        }
         break;
       }
       case 'match': {
         const next = nextMatch(db);
-        if (next) add(definition, 'next', {}, `Next match · ${definition.label}`, matchTitle(db, next), { type: 'logos', teams: [teamById(db, next.teamA), teamById(db, next.teamB)] });
-        for (const match of [...db.matches].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))) {
-          add(definition, match.id, { match: match.id }, `${definition.label} · ${matchTitle(db, match)}`, `${match.date || 'Date TBD'} · ${match.time || 'Time TBD'}`, { type: 'logos', teams: [matchTeam(db, match, 'A'), matchTeam(db, match, 'B')] });
+        const formats = FORMAT_SCENES.has(definition.id) ? sceneFormats(definition.id) : [null];
+        for (const format of formats) {
+          const fmtParams = format ? { format } : {};
+          const suffix = format ? `:${format}` : '';
+          const label = format ? `${definition.label} · ${formatLabel(format)}` : definition.label;
+          if (next) add(definition, `next${suffix}`, fmtParams, `${label} · Next`, matchTitle(db, next), { type: 'logos', teams: [teamById(db, next.teamA), teamById(db, next.teamB)] });
+          for (const match of [...db.matches].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))) {
+            add(definition, `${match.id}${suffix}`, { match: match.id, ...fmtParams }, `${label} · ${matchTitle(db, match)}`, `${match.date || 'Date TBD'} · ${match.time || 'Time TBD'}`, { type: 'logos', teams: [matchTeam(db, match, 'A'), matchTeam(db, match, 'B')] });
+          }
         }
         break;
       }
@@ -56,13 +77,28 @@ export function graphicCatalog(db, today = isoDay(0, db.settings.timezone)) {
         for (const feature of db.features) add(definition, feature.id, { feature: feature.id }, feature.title || definition.label, definition.label, { type: 'photos', players: [db.players.find(player => player.id === feature.playerA), db.players.find(player => player.id === feature.playerB)] });
         break;
       default:
-        add(definition, 'default', {}, definition.label, '', { type: 'icon', icon: definition.id });
+        if (definition.id === 'bracket' && db.settings.brackets?.length) {
+          for (const bracket of bracketDefinitions(db)) add(definition, bracket.id, { bracket: bracket.id }, bracket.name || definition.label, '', { type: 'icon', icon: 'bracket' });
+        } else if (definition.id === 'social-bracket') {
+          const brackets = bracketDefinitions(db);
+          if (!brackets.length) add(definition, 'story', { format: 'story' }, `${definition.label} · Story`, 'Add a bracket in Settings', { type: 'icon', icon: 'bracket' });
+          for (const bracket of brackets) for (const format of sceneFormats(definition.id)) {
+            add(definition, `${bracket.id}:${format}`, { bracket: bracket.id, format }, `${definition.label} · ${bracket.name || bracket.id} · ${formatLabel(format)}`, '', { type: 'icon', icon: 'bracket' });
+          }
+        } else if (FORMAT_SCENES.has(definition.id)) {
+          for (const format of sceneFormats(definition.id)) add(definition, format, { format }, `${definition.label} · ${formatLabel(format)}`, '', { type: 'icon', icon: 'image' });
+        } else add(definition, 'default', {}, definition.label, '', { type: 'icon', icon: definition.id });
     }
   }
   for (const graphic of db.graphics ?? []) {
     const definition = SCENE_DEFINITIONS.find(scene => scene.id === graphic.scene);
     if (!definition) continue;
     if (db.settings.enabledScenes?.length && !db.settings.enabledScenes.includes(definition.id)) continue;
+    if (['bracket', 'format'].includes(definition.id)) {
+      const signature = params => JSON.stringify(Object.entries(clean(params)).sort(([a], [b]) => a.localeCompare(b)));
+      const automatic = cards.find(card => card.scene === graphic.scene && signature(card.params) === signature(graphic.params));
+      if (automatic) { Object.assign(automatic, { title: graphic.name, savedId: graphic.id, automatic: true }); continue; }
+    }
     add(definition, `saved:${graphic.id}`, graphic.params, graphic.name, definition.label, null, { group: 'saved', savedId: graphic.id });
   }
   return cards;

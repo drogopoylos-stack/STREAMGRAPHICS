@@ -1,0 +1,51 @@
+:root { color-scheme: dark; --eb-gap: 18px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 500 15px/1.35 "Fira Sans Condensed", "Arial Narrow", Arial, sans-serif; color: var(--text); background: radial-gradient(120% 90% at 50% 0%, rgba(var(--accent2-rgb), .13), transparent 60%), linear-gradient(180deg, var(--primary), #05090f); }
+.no-bg body { background: transparent; }
+.eb { padding: 26px clamp(14px, 3vw, 34px) 20px; }
+.eb-head { display: flex; align-items: center; gap: 18px; }
+.eb-brand { width: 64px; height: 64px; flex: none; object-fit: contain; }
+.eb-league { font: 800 13px/1 "Fira Sans Extra Condensed", sans-serif; letter-spacing: .24em; text-transform: uppercase; color: var(--accent2); }
+.eb-title { margin: 6px 0 0; font: 800 clamp(28px, 4.4vw, 46px)/1 "Fira Sans Extra Condensed", sans-serif; text-transform: uppercase; letter-spacing: .01em; }
+.eb-sub { margin: 7px 0 0; color: rgba(255,255,255,.72); }
+.eb-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; }
+.eb-tabs:empty { display: none; }
+.eb-tab { appearance: none; border: 1px solid rgba(var(--accent2-rgb), .45); background: rgba(255,255,255,.03); color: var(--text); padding: 8px 15px; border-radius: 999px; font: 700 14px/1 "Fira Sans Condensed", sans-serif; cursor: pointer; }
+.eb-tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #0b0d12; }
+.eb-tab:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+.eb-rule { height: 1px; margin: 20px 0 22px; background: linear-gradient(90deg, rgba(var(--accent-rgb), .9), rgba(var(--accent-rgb), 0)); }
+.eb-grid { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: var(--eb-gap); align-items: stretch; }
+.eb-round { display: flex; flex-direction: column; min-width: 0; }
+.eb-round-name { margin: 0 0 12px; font: 800 13px/1.2 "Fira Sans Extra Condensed", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--accent2); }
+.eb-list { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 14px; }
+.eb-match { background: linear-gradient(135deg, rgba(var(--primary-rgb), .92), rgba(8,13,22,.92)); border: 1px solid rgba(var(--accent2-rgb), .25); border-left: 3px solid rgba(var(--accent2-rgb), .6); border-radius: 6px; padding: 8px 10px 6px; }
+.eb-match.is-live { border-left-color: #ff3b4a; box-shadow: 0 0 0 1px rgba(255,59,74,.45); }
+.eb-match.is-done { border-left-color: var(--accent); }
+.eb-meta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: rgba(255,255,255,.6); margin-bottom: 4px; }
+.eb-code { color: var(--accent2); font-weight: 700; }
+.eb-when { margin-left: auto; white-space: nowrap; }
+.eb-live { background: #ff3b4a; color: #fff; font-weight: 700; font-size: 10.5px; letter-spacing: .1em; padding: 2px 6px; border-radius: 3px; }
+.eb-team { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 5px 0; }
+.eb-team + .eb-team { border-top: 1px solid rgba(255,255,255,.07); }
+.eb-logo { width: 26px; height: 26px; display: grid; place-items: center; }
+.eb-logo img { width: 100%; height: 100%; object-fit: contain; }
+.eb-logo-tbd { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(var(--accent2-rgb), .85); color: #0b0d12; font: 800 13px/1 "Fira Sans Extra Condensed", sans-serif; }
+.eb-name { font: 700 16px/1.15 "Fira Sans Condensed", sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eb-score { font: 800 19px/1 "Fira Sans Extra Condensed", sans-serif; min-width: 16px; text-align: right; color: rgba(255,255,255,.55); }
+.eb-team.is-winner .eb-name { color: var(--accent2); }
+.eb-team.is-winner .eb-score { color: var(--accent); }
+.eb-team.is-loser { opacity: .62; }
+.eb-team.is-tbd .eb-name { color: rgba(255,255,255,.66); font-weight: 500; }
+.eb-advance { border-left-color: var(--accent); padding: 8px 10px; }
+.eb-advance .eb-team { padding: 2px 0; }
+.eb-champion { margin: 22px 0 0; display: flex; align-items: center; gap: 12px; justify-content: center; padding: 12px; border: 1px solid var(--accent); border-radius: 6px; font: 800 20px/1 "Fira Sans Extra Condensed", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.eb-champion .eb-logo { width: 34px; height: 34px; }
+.eb-foot { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,.55); letter-spacing: .04em; }
+@media (max-width: 760px) {
+  .eb-grid { grid-template-columns: minmax(0, 1fr); }
+  .eb-list { justify-content: flex-start; }
+  .eb-head { gap: 12px; }
+  .eb-brand { width: 48px; height: 48px; }
+}
+.eb-champion[hidden] { display: none; }

@@ -37,8 +37,8 @@ function playerSide(p, champs, key, simple) {
     simple
       ? h('div', { class: `mu-art mu-art-${key}` }, crest(team, 'mu-crest', { in: 'scale', d: key === 'a' ? 300 : 380, dur: 800 }))
       : playerPhoto(p, `mu-photo mu-photo-${key}`, { in: 'rise', d: key === 'a' ? 260 : 340, dur: 950 }),
-    h('div', { class: `mu-card mu-card-${key}`, in: dir, d: 620, dur: 700 },
-      h('div', { class: 'mu-teamrow' },
+    h('div', { class: `mu-card mu-card-${key}`, 'data-ref': p?.id ? `player:${p.id}` : null, in: dir, d: 620, dur: 700 },
+      h('div', { class: 'mu-teamrow', 'data-ref': team?.id ? `team:${team.id}` : null },
         teamLogo(team, 'mu-tlogo'),
         h('span', { class: 'mu-team' }, team?.name || ''),
         flagBadge(p?.country, 'mu-flag')),

@@ -6,3 +6,7 @@ jobs/
 graphify-out/
 *.log
 server.pid
+.studio-uploads/
+public/overlay/js/scenes/graphify-out/
+server.err.log
+*.tmp

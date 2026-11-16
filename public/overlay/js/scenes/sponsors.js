@@ -9,7 +9,7 @@ const AREA_W = 1712;
 
 function tile(s, cls, d, size) {
   const name = () => h('div', { class: 'sp-name display' }, s.name || '');
-  const box = h('div', { class: `sp-tile glass ${cls}`, style: { width: `${size.w}px`, height: `${size.h}px`, '--th': `${size.h}px` }, in: 'scale', d, dur: 650 });
+  const box = h('div', { class: `sp-tile glass ${cls}`, 'data-ref': s.id ? `sponsor:${s.id}` : null, style: { width: `${size.w}px`, height: `${size.h}px`, '--th': `${size.h}px` }, in: 'scale', d, dur: 650 });
   if (s.logo) {
     const img = h('img', { src: s.logo, alt: s.name || '', draggable: 'false' });
     img.addEventListener('error', () => { img.replaceWith(name()); box.classList.add('is-text'); }, { once: true });
@@ -32,9 +32,9 @@ function gridFor(n, w, hMax, { gap, maxH, ratio = 1.72 }) {
   return best;
 }
 
-function sectionLabel(text, d) {
+function sectionLabel(text, d, cls = '') {
   return h('div', { class: 'sp-label', in: 'fade', d },
-    h('i', { class: 'sp-label-line' }), h('span', {}, text), h('i', { class: 'sp-label-line' }));
+    h('i', { class: 'sp-label-line' }), h('span', { class: cls }, text), h('i', { class: 'sp-label-line' }));
 }
 
 export default {
@@ -63,7 +63,7 @@ export default {
       if (main.length) {
         const g = gridFor(main.length, AREA_W, mainH, { gap: 36, maxH: mainH, ratio: 1.9 });
         wrap.append(
-          sectionLabel(main.length > 1 ? 'Main Sponsors' : 'Main Sponsor', 460),
+          sectionLabel(main.length > 1 ? 'Main Sponsors' : 'Main Sponsor', 460, 'sp-main-label'),
           h('div', { class: 'sp-row sp-main-row', style: { gap: '36px', height: `${mainH}px` } },
             main.map((s) => tile(s, 'is-main ticks', 560 + step * i++, g))));
       }
@@ -71,7 +71,7 @@ export default {
         const g = gridFor(rest.length, AREA_W, restH, { gap: 22, maxH: main.length ? 150 : 230 });
         if (main.length) wrap.append(h('div', { style: { height: `${SPACER}px`, flex: 'none' } }));
         wrap.append(
-          sectionLabel('Official Partners', 520),
+          sectionLabel('Official Partners', 520, 'sp-partners-label'),
           h('div', { class: 'sp-row sp-grid', style: { gap: '22px', width: `${g.cols * g.w + (g.cols - 1) * 22}px` } },
             rest.map((s) => tile(s, 'is-partner', 600 + step * i++, g))));
       }

@@ -5,10 +5,10 @@ import { animateIn } from './anim.js';
 import { dimensionsFor } from '../../shared/scenes.js';
 
 const flags = readFlags();
-const stage = mountStage(dimensionsFor(flags.scene));
+const stage = mountStage(dimensionsFor(flags.scene, flags.params));
 if (flags.static) document.body.classList.add('is-static');
 
-const ctx = { scene: flags.scene, params: flags.params, bg: flags.bg, static: flags.static };
+const ctx = { scene: flags.scene, params: flags.params, bg: flags.bg, motion: flags.motion, static: flags.static };
 let current = null;
 let lastJson = null;
 let seq = 0;
@@ -39,7 +39,45 @@ async function show(animate) {
   if (animate && !flags.static) animateIn(el);
 }
 
-if (flags.static) {
+if (flags.designer && parent !== window) {
+  let previewSeq = 0;
+  const { createLayoutEditor } = await import('./layout-editor.js');
+  const editor = createLayoutEditor((action, body) => parent.postMessage({ type: 'graphic-layout', action, ...body }, location.origin));
+  let pendingPreview = null;
+  document.addEventListener('graphic-text-ended', event => {
+    if (!pendingPreview) return;
+    const message = pendingPreview; pendingPreview = null;
+    if (event.detail) {
+      message.data.graphicDesign.screens[flags.scene] ||= {};
+      message.data.graphicDesign.screens[flags.scene][event.detail.slot] = event.detail.field;
+    }
+    dispatchEvent(new MessageEvent('message', { source: parent, origin: location.origin, data: message }));
+  });
+  addEventListener('message', async event => {
+    if (event.source !== parent || event.origin !== location.origin) return;
+    if (event.data?.type === 'graphic-layout') { editor.handle(event.data); return; }
+    if (event.data?.type !== 'graphic-design-preview') return;
+    if (editor.editing) { pendingPreview = event.data; return; }
+    const my = ++previewSeq;
+    let next;
+    try {
+      const data = event.data.data;
+      if (data?.scene !== flags.scene) return;
+      const previewCtx = { ...ctx, static: !event.data.motion };
+      document.body.classList.toggle('is-static', previewCtx.static);
+      const built = buildScene(data, previewCtx); next = built.el;
+      await prepare(stage, next, built.waits, previewCtx, { imageTimeout: 2500 });
+      if (editor.editing) { pendingPreview = event.data; next.remove(); return; }
+      if (my !== previewSeq) { next.remove(); return; }
+      current?.remove(); current = next; reveal(next);
+      for (const node of next.querySelectorAll('[data-design-slot]')) if (node.dataset.designSlot === event.data.focus) node.classList.add('design-preview-focus');
+      editor.attach(next, data);
+      markReady();
+      parent.postMessage({ type: 'graphic-design-rendered' }, location.origin);
+    } catch (error) { next?.remove(); parent.postMessage({ type: 'graphic-design-error', message: error.message }, location.origin); }
+  });
+  parent.postMessage({ type: 'graphic-design-ready' }, location.origin);
+} else if (flags.static) {
   // PNG renderer: final frame at once, then signal readiness (with a failsafe so the renderer never hangs).
   const failsafe = sleep(17000);
   await Promise.race([show(false), failsafe]);
@@ -54,4 +92,5 @@ if (flags.static) {
       pending = setTimeout(() => show(false), 120);
     },
   });
+  if (flags.scene === 'waiting') setInterval(() => show(false), 60000);
 }

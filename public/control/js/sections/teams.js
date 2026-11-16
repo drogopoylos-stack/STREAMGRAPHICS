@@ -3,6 +3,7 @@ import { h, keyedList, setKids } from '../dom.js';
 import { icon } from '../icons.js';
 import { t } from '../strings.js';
 import { api } from '../api.js';
+import { editRosters } from '../roster-editor.js';
 import { store } from '../store.js';
 import {
   toast, toastError, busy, btn, badge, imgBox, droppable, dropZone, emptyState, sectionHead,
@@ -107,6 +108,7 @@ export async function edit(teamId) {
       h('p.field-hint.span-2', t('teams.colorsHint')),
       h('div.span-2', hidden.el)),
     isNew ? null : h('div.form-links',
+      btn(t('rosterEditor.edit'), { size: 'sm', iconName: 'players', onclick: () => closeDrawer().then(ok => ok && editRosters([teamId])) }),
       h('button.btn.btn-sm.btn-ghost', { type: 'button', onclick: () => { closeDrawer().then((ok) => ok && goto('players', { team: teamId })); } }, icon('players', 14), h('span', `${t('teams.viewPlayers')} (${nPlayers})`)),
       tm?.url ? h('a.btn.btn-sm.btn-ghost', { href: tm.url, target: '_blank', rel: 'noopener' }, icon('external', 14), h('span', t('common.hllgrLink'))) : null));
 

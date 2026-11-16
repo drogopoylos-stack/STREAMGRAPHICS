@@ -10,27 +10,31 @@ import {
 } from '../ui.js';
 import { teamOptions, matchLabel, addDays } from '../scenes.js';
 import { cueAndShow } from './live.js';
+import { matchSheetPanel } from '../match-sheet-panel.js';
+import { filterMenu, applyFacets, matchPeriod, MATCH_PERIODS } from '../filter-menu.js';
 
 export const id = 'matches';
 let els = null;
-const filter = { status: '', team: '' };
+const filter = { team: '' };
 let jumped = false;
 
 export function mount(root) {
-  const statusSel = ctlSelect({ options: [{ value: '', label: t('matches.allStatus') }, ...['scheduled', 'live', 'done'].map((s) => ({ value: s, label: t(`status.${s}`) }))] });
   const teamSel = ctlSelect({ options: [{ value: '', label: t('matches.allTeams') }, ...teamOptions(store.state)] });
-  statusSel.el.setAttribute('aria-label', t('matches.status'));
   teamSel.el.setAttribute('aria-label', t('players.team'));
-  statusSel.el.addEventListener('change', () => { filter.status = statusSel.el.value; render(); });
   teamSel.el.addEventListener('change', () => { filter.team = teamSel.el.value; render(); });
   const head = sectionHead(t('matches.title'), '',
     btn(t('matches.jumpToday'), { iconName: 'target', onclick: () => jumpToday() }),
     btn(t('matches.add'), { kind: 'primary', iconName: 'plus', onclick: () => edit(null) }));
-  const bar = h('div.toolbar', statusSel.el, teamSel.el);
+  const menu = filterMenu({
+    searchLabel: t('matches.search'), storageKey: 'matches', extra: [teamSel.el], onChange: () => render(),
+    rows: [{ id: 'round', label: t('matches.round'), allLabel: t('matches.allRounds') }, { id: 'period', label: t('live.browse.periods'), allLabel: t('live.browse.all'), secondary: true }],
+  });
+  const bar = menu.el;
   const list = h('div.match-list', { role: 'list' });
   const empty = h('div', { hidden: true }, emptyState({ iconName: 'matches', title: t('matches.empty'), body: t('matches.emptyBody') }));
-  root.append(head, bar, list, empty);
-  els = { head, list, empty, teamSel };
+  const matchSheet = matchSheetPanel();
+  root.append(head, matchSheet.el, bar, list, empty);
+  els = { head, list, empty, teamSel, matchSheet, menu };
   update(store.state);
 }
 
@@ -84,17 +88,39 @@ function row(m) {
   return el;
 }
 
+/** Round of each match: its bracket round, else its stage when the tournament has a few stages only. */
+function roundsOf(s) {
+  const byMatch = new Map();
+  for (const bracket of s.settings.brackets || []) for (const round of bracket.rounds || []) for (const id of round.matches || []) byMatch.set(id, round.name);
+  if (byMatch.size) {
+    const list = [...new Set((s.settings.brackets || []).flatMap((b) => (b.rounds || []).map((r) => r.name)))];
+    const other = t('matches.otherRound');
+    if (s.matches.some((m) => !byMatch.has(m.id))) list.push(other);
+    return { list, of: (m) => byMatch.get(m.id) ?? other };
+  }
+  const stages = [...new Set(s.matches.map((m) => m.stage || t('matches.noStage')))];
+  return stages.length <= 12 ? { list: stages.sort(), of: (m) => m.stage || t('matches.noStage') } : { list: [], of: () => null };
+}
+
 function render() {
   const s = store.state;
   if (!els || !s) return;
-  let list = s.matches;
-  if (filter.status) list = list.filter((m) => m.status === filter.status);
-  if (filter.team) list = list.filter((m) => m.teamA === filter.team || m.teamB === filter.team);
+  els.menu.forTournament(s.activeTournamentId);
+  const rounds = roundsOf(s);
+  const facets = { period: (m) => matchPeriod(m, s.today) };
+  if (rounds.list.length > 1) facets.round = (m) => rounds.of(m);
+  const result = applyFacets(s.matches.filter((m) => !filter.team || m.teamA === filter.team || m.teamB === filter.team), els.menu, facets,
+    (m) => [store.team(m.teamA)?.name, store.team(m.teamA)?.tag, m.teamALabel, store.team(m.teamB)?.name, store.team(m.teamB)?.tag, m.teamBLabel, m.stage, m.bracketCode, m.date].join(' '));
+  els.menu.paintRow('round', rounds.list.length > 1 ? rounds.list.map((r) => ({ id: r, label: r, count: result.counts.round.get(r) ?? 0 })) : [], result.totals.round ?? 0);
+  els.menu.paintRow('period', MATCH_PERIODS.map((id) => ({ id, label: t(`live.browse.${id}`), count: result.counts.period.get(id) ?? 0 })), result.totals.period);
+  els.menu.setCount(t('matches.count', { n: result.shown.length }));
+  const filtered = result.shown.length !== s.matches.length;
+  let list = result.shown;
   list = [...list].sort((a, b) => `${b.date} ${b.time ?? ''}`.localeCompare(`${a.date} ${a.time ?? ''}`));
   // Within a day show the earliest first.
   const byDate = new Map();
   for (const m of list) { if (!byDate.has(m.date)) byDate.set(m.date, []); byDate.get(m.date).push(m); }
-  if (!byDate.has(s.today) && !filter.status && !filter.team) byDate.set(s.today, []);
+  if (!byDate.has(s.today) && !filtered) byDate.set(s.today, []);
   const dates = [...byDate.keys()].sort((a, b) => a == null ? 1 : b == null ? -1 : b.localeCompare(a));
   const items = [];
   for (const d of dates) {
@@ -115,12 +141,17 @@ function render() {
 
 export function update(state) {
   if (!els || !state) return;
+  els.matchSheet.update();
   els.teamSel.setOptions([{ value: '', label: t('matches.allTeams') }, ...teamOptions(state)]);
   els.teamSel.el.value = filter.team;
   render();
 }
 
 export async function edit(matchId) {
+  if (store.state?.settings?.matchSheet?.enabled) {
+    toast('Edit matches in Google Sheets. Open the match sheet above.', 'info');
+    return;
+  }
   const isNew = !matchId;
   const m = isNew ? null : store.match(matchId);
   if (!isNew && !m) return;

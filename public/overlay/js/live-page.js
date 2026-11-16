@@ -4,6 +4,7 @@
 import { readFlags, mountStage, fetchSceneData, subscribe, markReady, sleep } from './core.js';
 import { buildScene, prepare, reveal } from './render.js';
 import { animateIn, animateOut } from './anim.js';
+import { BG_MOTIONS } from '../../shared/graphic-design.js';
 
 const flags = readFlags();
 const stage = mountStage();
@@ -16,24 +17,26 @@ let dirty = false;
 
 function effective(live) {
   const params = { ...(live?.params || {}) };
-  const bg = flags.bg && String(params.bg ?? '1') !== '0';
+  const bg = flags.bg ?? (params.bg == null ? null : String(params.bg) !== '0');
+  const motion = flags.motion ?? (BG_MOTIONS.includes(params.motion) ? params.motion : null);
   const mode = flags.mode || (params.mode === 'simple' || params.mode === 'full' ? params.mode : null);
   delete params.bg;
+  delete params.motion;
   delete params.static;
-  return { params, bg, mode };
+  return { params, bg, motion, mode };
 }
 
 function keyOf(live) {
   if (!live?.visible || !live.scene) return null;
-  const { params, bg, mode } = effective(live);
+  const { params, bg, motion, mode } = effective(live);
   const p = Object.entries(params).filter(([, v]) => v != null && v !== '').sort(([a], [b]) => a.localeCompare(b));
-  return `${live.scene}?${new URLSearchParams(p)}&bg=${bg ? 1 : 0}&mode=${mode || ''}`;
+  return `${live.scene}?${new URLSearchParams(p)}&bg=${bg == null ? '' : bg ? 1 : 0}&motion=${motion ?? ''}&mode=${mode || ''}`;
 }
 
 /** Fetch + build + prepare (hidden) a scene. Never throws: on error returns an empty layer. */
 async function build(live) {
-  const { params, bg, mode } = effective(live);
-  const ctx = { scene: live.scene, params, bg, static: flags.static, viewport: { width: 1920, height: 1080 } };
+  const { params, bg, motion, mode } = effective(live);
+  const ctx = { scene: live.scene, params, bg, motion, static: flags.static, viewport: { width: 1920, height: 1080 } };
   try {
     const data = await fetchSceneData(live.scene, params, { ...flags, mode, data: null });
     const { el, waits } = buildScene(data, ctx);
@@ -107,4 +110,8 @@ if (flags.static) {
       pending = setTimeout(() => { dirty = true; pump(); }, 120);
     },
   });
+  // A waiting screen can remain on air across midnight without a database edit.
+  setInterval(() => {
+    if (target?.visible && target.scene === 'waiting') { dirty = true; pump(); }
+  }, 60000);
 }

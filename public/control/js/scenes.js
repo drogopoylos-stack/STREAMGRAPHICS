@@ -75,7 +75,9 @@ export function describe(scene, params = {}) {
       if (!params.match) detail = `${t('scenes.nextMatch')} · ${detail}`;
       break;
     }
-    case 'roster': detail = store.team(params.team)?.name ?? ''; break;
+    case 'roster':
+    case 'social-roster': detail = store.team(params.team)?.name ?? ''; break;
+    case 'bracket': detail = (store.state.settings.brackets || []).find(bracket => bracket.id === (params.bracket || store.state.settings.brackets?.[0]?.id))?.name || ''; break;
     case 'matchup': {
       const f = store.feature(params.feature);
       if (f) detail = f.title || featureAutoTitle(f);

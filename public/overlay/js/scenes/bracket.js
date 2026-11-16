@@ -3,7 +3,9 @@
 // Static renders wait for the embed's load event (max 4 s) before marking ready.
 import { h, plate, laurel } from '../ui.js';
 import { sceneHeader, sponsorsFor, leagueLine } from './common.js';
+import standings from './standings.js';
 import nativeBracket from './native-bracket.js';
+import gslBracket from './gsl-bracket.js';
 
 const EMBED_WAIT = 4000;
 
@@ -94,6 +96,8 @@ function ghost(data) {
 
 export default {
   render(data, ctx) {
+    if (data.tree?.format === 'round-robin') return standings.render({ ...data, rows: data.tree.standings, title: data.tree.title, subtitle: data.tree.subtitle, footer: data.tree.footer }, ctx);
+    if (data.tree?.format === 'gsl') return gslBracket.render(data, ctx);
     if (data.tree?.rounds?.length) return nativeBracket.render(data, ctx);
     const embed = data.embed || { type: 'none' };
     const hasEmbed = (embed.type === 'iframe' || embed.type === 'url') ? !!embed.src : embed.type === 'html' && !!embed.html;

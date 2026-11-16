@@ -1,5 +1,6 @@
 // DOM builder + broadcast components shared by all scenes.
 import { luminance, plateUrl } from './core.js';
+import { iconSvg } from '../../shared/icon-sets.js';
 
 /**
  * h('div', { class, style: {...}, in: 'up', d: 300, ...attrs }, ...children)
@@ -49,9 +50,23 @@ export function fit(cls, text, props = {}) {
 
 export function plate(theme, kind, ctx, extra = '') {
   if (!ctx.bg) return null;
-  return h('div', { class: `plate plate-${kind} ${extra}`, in: 'plate', d: 0, dur: 900 },
-    h('div', { class: 'plate-img', style: { backgroundImage: `url("${plateUrl(theme, kind)}")` } }),
+  const url = plateUrl(theme, kind, ctx);
+  const el = h('div', { class: `plate plate-${kind} ${extra}`, in: 'plate', d: 0, dur: 900 },
+    h('div', { class: 'plate-img', style: { backgroundImage: `url("${url}")` } }),
     h('div', { class: 'plate-shade' }));
+  if (ctx.bgMotion && ctx.bgMotion !== 'none') {
+    const time = { slow: 1.5, normal: 1, fast: .75 }[ctx.bgSpeed] ?? 1;
+    const intensity = { subtle: .6, normal: 1, strong: 1.35 };
+    el.dataset.bga = ctx.bgMotion;
+    el.dataset.bgaLevel = intensity[ctx.bgIntensity] ? ctx.bgIntensity : 'normal';
+    if (['main', 'social'].includes(kind) && url.startsWith('/brand/')) el.dataset.framed = '';
+    el.classList.toggle('bga-force', !!ctx.bgForce);
+    el.style.setProperty('--bga-t', `${-((Date.now() % (48000 * time)) / 1000).toFixed(3)}s`);
+    el.style.setProperty('--bga-time', String(time));
+    el.style.setProperty('--bga-k', String(intensity[ctx.bgIntensity] ?? 1));
+    el.append(h('div', { class: 'bga-fx', 'aria-hidden': 'true' }, ctx.bgMotion === 'embers' ? Array.from({ length: 32 }, () => h('i')) : []));
+  }
+  return el;
 }
 
 // ---------- team logo / monogram ----------
@@ -72,16 +87,19 @@ function teamMonogram(team) {
   const text = (team?.tag || initials(team?.name, 3) || '?').slice(0, 5).toUpperCase();
   const len = [...text].length;
   const fs = len <= 2 ? 40 : len === 3 ? 33 : len === 4 ? 26 : 21;
-  return svg(`<svg viewBox="0 0 100 100" class="mono" aria-label="${esc(text)}">
+  const el = svg(`<svg viewBox="0 0 100 100" class="mono" aria-label="${esc(text)}">
     <path d="M50 4 L90 16 V50 C90 72 72 88 50 96 C28 88 10 72 10 50 V16 Z" fill="${esc(fill)}" />
     <path d="M50 10 L84 20.5 V50 C84 69 69 83 50 90 C31 83 16 69 16 50 V20.5 Z" fill="none" stroke="${ink}" stroke-opacity=".35" stroke-width="1.6" />
     <text x="50" y="${52 + fs * 0.35}" text-anchor="middle" font-family="Fira Sans Extra Condensed, sans-serif" font-weight="900" font-size="${fs}" fill="${ink}" letter-spacing="1">${esc(text)}</text>
   </svg>`);
+  // A place with no team yet ("TBD", "Winner 1-1"); a real team without a logo keeps its tag.
+  if (!team || team.placeholder) el.dataset.iconSlot = 'Team';
+  return el;
 }
 
 /** Team logo (transparent square PNG) or a shield monogram in the team colour. */
 export function teamLogo(team, cls = '', props = {}) {
-  const wrap = h('div', { ...props, class: `tlogo ${cls}` });
+  const wrap = h('div', { ...props, class: `tlogo ${cls}`, 'data-ref': team?.id && !team.placeholder ? `team:${team.id}` : null });
   if (team?.logo) {
     const img = h('img', { src: team.logo, alt: '', draggable: 'false' });
     img.addEventListener('error', () => img.replaceWith(teamMonogram(team)), { once: true });
@@ -94,7 +112,7 @@ export function teamLogo(team, cls = '', props = {}) {
 
 /** Shield circle (hoplite aspis) behind a logo: rings + inner glow. */
 export function crest(team, cls = '', props = {}) {
-  return h('div', { ...props, class: `crest ${cls}` },
+  return h('div', { ...props, class: `crest ${cls}`, 'data-ref': team?.id && !team.placeholder ? `team:${team.id}` : null },
     h('div', { class: 'crest-ring' }),
     teamLogo(team, 'crest-logo'));
 }
@@ -116,7 +134,7 @@ function silhouette(p) {
 
 /** Cut-out player photo, or a silhouette placeholder with the nick monogram. */
 export function playerPhoto(p, cls = '', props = {}) {
-  const wrap = h('div', { ...props, class: `pphoto ${cls}` });
+  const wrap = h('div', { ...props, class: `pphoto ${cls}`, 'data-ref': p?.id ? `player:${p.id}` : null });
   if (p?.photo) {
     const img = h('img', { src: p.photo, alt: '', draggable: 'false' });
     img.addEventListener('error', () => { img.replaceWith(silhouette(p)); wrap.classList.add('is-sil'); }, { once: true });
@@ -130,19 +148,14 @@ export function playerPhoto(p, cls = '', props = {}) {
 
 // ---------- role glyphs (24×24, currentColor) ----------
 
-const ROLE_SVG = {
-  Top: '<path d="M3 3h14.5l-4 4H7v6.5l-4 4z"/><path d="M10 10h4v4h-4z"/><path d="M21 6.5V21H6.5l2.5-2.5h9.5V9z" opacity=".38"/>',
-  Jungle: '<path d="M5.2 2.8c3.4 3.6 4.9 7.9 4.6 13.2L12 21.3l2.2-5.3c-.3-5.3 1.2-9.6 4.6-13.2-2.6 1.8-4.6 4.6-6 8.3C11.4 7.4 9 4.6 5.2 2.8z"/><path d="M3.2 8.6c2 1.6 3.3 3.6 3.9 6.1l1.5 1.6c-.1-3.2-2.1-6.2-5.4-7.7zM20.8 8.6c-2 1.6-3.3 3.6-3.9 6.1l-1.5 1.6c.1-3.2 2.1-6.2 5.4-7.7z" opacity=".55"/>',
-  Mid: '<path d="M16.5 3H21v4.5L7.5 21H3v-4.5z"/><path d="M3 3h9l-3 3H6v3l-3 3zM21 21h-9l3-3h3v-3l3-3z" opacity=".38"/>',
-  Bot: '<path d="M21 21H6.5l4-4H17v-6.5l4-4z"/><path d="M10 10h4v4h-4z"/><path d="M3 17.5V3h14.5L15 5.5H5.5V15z" opacity=".38"/>',
-  Support: '<path d="M12 2.5l2.6 3.2L12 9.6 9.4 5.7z"/><path d="M1.8 6.8h6.6l2.2 3.2-2.4 3.4H5.6l1.5-2.6z"/><path d="M22.2 6.8h-6.6l-2.2 3.2 2.4 3.4h2.6l-1.5-2.6z"/><path d="M10.3 11.6h3.4l-.5 8.4L12 21.6 10.8 20z"/>',
-  Coach: '<path d="M12 3.2a7.6 7.6 0 0 0-7.6 7.6v3.6a2.6 2.6 0 0 0 2.6 2.6h1.4v-6.8H6.3v-.4a5.7 5.7 0 0 1 11.4 0v.4h-2.1V17h.6c-.7 1.4-2 2.2-3.8 2.4v-.9H10v3h2.4c3.2 0 5.6-1.6 6.6-4.5a2.6 2.6 0 0 0 1.6-2.4v-3.8A8.6 8.6 0 0 0 12 3.2z"/>',
-  '': '<circle cx="12" cy="7.6" r="4.2"/><path d="M3.8 21c.6-4.6 3.9-7.6 8.2-7.6s7.6 3 8.2 7.6z"/>',
-};
+const ROLE_SLOTS = ['Top', 'Jungle', 'Mid', 'Bot', 'Support', 'Coach'];
 
+/** A role icon of the Classic set. The Graphics designer swaps it by its slot (graphic-design.js). */
 export function roleIcon(role, cls = 'role-ic') {
-  const body = ROLE_SVG[role] ?? ROLE_SVG[''];
-  return svg(`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${body}</svg>`, cls);
+  const slot = ROLE_SLOTS.includes(role) ? role : 'Player';
+  const el = svg(iconSvg('classic', slot), cls);
+  el.dataset.iconSlot = slot;
+  return el;
 }
 
 export function roleLabel(role) {
@@ -192,6 +205,7 @@ export function leagueLogo(league, cls = '', props = {}) {
   const wrap = h('div', { ...props, class: `league-logo ${cls}` });
   const src = league?.logo || '/brand/hll-logo.png';
   const img = h('img', { src, alt: '', draggable: 'false' });
+  if (src === '/brand/tournament.svg') img.dataset.iconSlot = 'Emblem';
   img.addEventListener('error', () => img.replaceWith(h('div', { class: 'league-mono' }, league?.short || 'HLL')), { once: true });
   wrap.append(img);
   return wrap;
@@ -207,7 +221,7 @@ export function sponsorStrip(sponsors, { label = 'Partners', max = 6, cls = '', 
     h('div', { class: 'spons-logos' }, list.slice(0, max).map((s) => {
       const img = h('img', { src: s.logo, alt: s.name || '', draggable: 'false' });
       img.addEventListener('error', () => img.replaceWith(h('span', { class: 'spons-name' }, s.name || '')), { once: true });
-      return h('div', { class: `spons-item ${s.tier === 'main' ? 'is-main' : ''}` }, img);
+      return h('div', { class: `spons-item ${s.tier === 'main' ? 'is-main' : ''}`, 'data-ref': s.id ? `sponsor:${s.id}` : null }, img);
     })));
 }
 

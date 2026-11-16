@@ -4,9 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import * as store from './db.js';
-import { dimensionsFor } from '../public/shared/scenes.js';
+import { dimensionsFor, sceneDefinition } from '../public/shared/scenes.js';
 import { sceneData } from './scenes.js';
 import { graphicCatalog } from './graphics.js';
+import { recordRender } from './output-index.js';
 
 const CANDIDATES = [
   process.env.HLL_BROWSER,
@@ -46,8 +47,11 @@ function safeName(s) {
 
 /** Render one scene to <outputDir>/<name>.png. Returns { file, url, name }. */
 export async function renderScene(scene, params = {}, name) {
+  const definition = sceneDefinition(scene);
+  // Social scenes always carry an explicit format, so the viewport and the file name say post or story.
+  if (definition?.group === 'social' && params.format == null) params = { ...params, format: 'story' };
   sceneData(scene, params);
-  const { width, height } = dimensionsFor(scene);
+  const { width, height } = dimensionsFor(scene, params);
   const outDir = store.get().settings.outputDir;
   fs.mkdirSync(outDir, { recursive: true });
   const qs = new URLSearchParams({ scene, static: '1', ...Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== '')) });
@@ -62,6 +66,7 @@ export async function renderScene(scene, params = {}, name) {
     const fileName = `${safeName(name ?? [scene, ...Object.values(params)].join('-'))}.png`;
     const file = path.join(outDir, fileName);
     await pg.screenshot({ path: file, omitBackground: true, type: 'png' });
+    recordRender(outDir, fileName, scene, params);
     return { scene, width, height, name: fileName, file, url: `/output/${encodeURIComponent(fileName)}?v=${Date.now().toString(36)}` };
   } finally {
     await pg.close().catch(() => {});
@@ -82,7 +87,7 @@ export async function renderAll(job, nextMatchId) {
   for (const f of db.features) list.push(['matchup', { feature: f.id }, `matchup-${f.id}`]);
   if (db.sponsors.some((s) => s.logo)) list.push(['sponsors', {}, 'sponsors']);
   if (db.settings.enabledScenes?.length) {
-    list = graphicCatalog(db).filter(card => card.ready && !card.savedId)
+    list = graphicCatalog(db).filter(card => card.ready && (!card.savedId || card.automatic))
       .filter(card => !['versus', 'simple-vs', 'social-versus'].includes(card.scene) || card.params.match)
       .filter(card => !['schedule', 'social-schedule'].includes(card.scene) || sceneData(card.scene, card.params, db).matches.length)
       .map(card => [card.scene, card.params, card.scene === 'simple-vs' ? `vs-${db.matches.find(m => m.id === card.params.match)?.bracketCode || card.params.match}` : card.title]);

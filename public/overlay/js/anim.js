@@ -42,13 +42,20 @@ const KF = {
 const EASING = { scale: EASE_BACK, pop: EASE_OUT };
 const DUR = { plate: 900, fade: 500, scale: 650, pop: 700, wipe: 650, wipel: 650, wipec: 650, wipev: 600, growx: 700, rise: 750, flash: 700 };
 
+/** A moved element keeps its layout transform (graphic-layout.js) under the animated transform. */
+function placed(el, keyframes) {
+  const base = el.__layoutTransform;
+  if (!base) return keyframes;
+  return keyframes.map((k) => (k.transform ? { ...k, transform: k.transform === 'none' ? base : `${base} ${k.transform}` } : k));
+}
+
 /** Play every [data-in] animation under root. Resolves when all have finished. */
 export function animateIn(root) {
   const anims = [];
   for (const el of root.querySelectorAll('[data-in]')) {
     const type = el.dataset.in;
     const kf = KF[type] || KF.fade;
-    const a = el.animate(kf, {
+    const a = el.animate(placed(el, kf), {
       duration: Number(el.dataset.dur) || DUR[type] || 600,
       delay: Number(el.dataset.d) || 0,
       easing: EASING[type] || EASE_OUT,
@@ -67,12 +74,15 @@ const OUT = {
 /** Quick exit (~0.5 s): top-level groups slip away with a short stagger while the whole scene fades. */
 export function animateOut(root) {
   if (!root?.isConnected) return Promise.resolve();
-  root.getAnimations({ subtree: true }).forEach((a) => a.finish?.());
+  for (const a of root.getAnimations({ subtree: true })) {
+    if (a.effect?.getComputedTiming().endTime === Infinity) continue;
+    a.finish();
+  }
   const groups = [...root.querySelectorAll('[data-in]')].filter((el) => !el.parentElement.closest('[data-in]') || el.parentElement.closest('[data-in]') === root);
   groups.forEach((el, i) => {
     const to = OUT[el.dataset.in];
     if (!to) return;
-    el.animate([{ transform: 'none' }, { transform: to }], {
+    el.animate(placed(el, [{ transform: 'none' }, { transform: to }]), {
       duration: 380, delay: Math.min(i * 22, 120), easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards',
     });
   });

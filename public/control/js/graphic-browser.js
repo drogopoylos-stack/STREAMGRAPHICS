@@ -41,7 +41,8 @@ export function graphicBrowser({ renderCard, onKeyDown, onRender }) {
     if (!available.some(item => item.id === type)) type = available.find(item => item.id !== 'all')?.id || 'all';
     keyedList(types, available, item => item.id, item => {
       const typeLabel = t(`live.browse.typeLabels.${item.id}`);
-      return filterButton(item.id, item.id === 'all' ? label('allTypes') : typeLabel.startsWith('live.browse.') ? sceneName(item.id) : typeLabel, item.count, type === item.id, chooseType);
+      const text = item.id === 'versus' && state.settings.rosterStyle === 'text' ? label('rosterVS') : typeLabel.startsWith('live.browse.') ? sceneName(item.id) : typeLabel;
+      return filterButton(item.id, item.id === 'all' ? label('allTypes') : text, item.count, type === item.id, chooseType);
     }, item => JSON.stringify([item, type === item.id]));
     const result = graphicSections(all, { type, period, saved, date: date.value, query: search.value });
     const periodOptions = [{ id: 'all', count: result.total }, ...PERIODS.filter(id => result.counts[id] || period === id).map(id => ({ id, count: result.counts[id] }))];

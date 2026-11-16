@@ -7,12 +7,23 @@ import simpleVs from './scenes/simple-vs.js';
 import schedule from './scenes/schedule.js';
 import matchup from './scenes/matchup.js';
 import bracket from './scenes/bracket.js';
+import waiting from './scenes/waiting.js';
+import format from './scenes/format.js';
 import sponsors from './scenes/sponsors.js';
 import socialSchedule from './scenes/social-schedule.js';
 import socialVersus from './scenes/social-versus.js';
+import socialRoster from './scenes/social-lineups.js';
+import socialResult from './scenes/social-result.js';
+import socialAnnounce from './scenes/social-announce.js';
+import socialBracket from './scenes/social-bracket.js';
+import socialLive from './scenes/social-live.js';
+import standings from './scenes/standings.js';
 import { dimensionsFor } from '../../shared/scenes.js';
+import { applyGraphicDesign } from './graphic-design.js';
+import { applyLayouts } from './graphic-layout.js';
+import { resolveBackground } from '../../shared/graphic-design.js';
 
-export const SCENES = { roster, versus, 'simple-vs': simpleVs, schedule, matchup, bracket, sponsors, 'social-schedule': socialSchedule, 'social-versus': socialVersus };
+export const SCENES = { roster, versus, 'simple-vs': simpleVs, schedule, matchup, bracket, format, waiting, sponsors, 'social-schedule': socialSchedule, 'social-versus': socialVersus, 'social-roster': socialRoster, 'social-result': socialResult, 'social-announce': socialAnnounce, 'social-bracket': socialBracket, 'social-live': socialLive, standings };
 
 function decorate(el, name, data, ctx) {
   el.classList.add('scene', `s-${name}`, `mode-${ctx.mode}`);
@@ -29,8 +40,15 @@ export function buildScene(data, ctx) {
   const mod = SCENES[name];
   if (!mod) throw new Error(`unknown scene "${name}"`);
   const c = { ...ctx, scene: name, mode: data.mode === 'simple' ? 'simple' : 'full', waits: [] };
-  const el = decorate(mod.render(data, c), name, data, c);
-  const size = dimensionsFor(name);
+  const bg = resolveBackground(data.graphicDesign, name);
+  c.bg = ctx.bg ?? bg.show;
+  c.bgMotion = c.bg ? (ctx.motion ?? bg.motion) : 'none';
+  c.bgSpeed = bg.speed; c.bgIntensity = bg.intensity; c.bgForce = !!ctx.motion;
+  const theme = { ...data.theme };
+  for (const key of ['accent', 'accent2']) if (data.graphicDesign?.assets?.[key]) theme[key] = data.graphicDesign.assets[key];
+  const styledData = { ...data, theme };
+  const el = applyGraphicDesign(decorate(mod.render(styledData, c), name, styledData, c), styledData);
+  const size = dimensionsFor(name, c.params);
   el.style.width = `${size.width}px`;
   el.style.height = `${size.height}px`;
   if (ctx.viewport && (ctx.viewport.width !== size.width || ctx.viewport.height !== size.height)) {
@@ -65,6 +83,7 @@ export async function prepare(stage, el, waits, ctx, opts = {}) {
   fitAll(el);
   const imgs = imagesReady(el);
   await (opts.imageTimeout ? Promise.race([imgs, sleep(opts.imageTimeout)]) : imgs);
+  applyLayouts(el);
   // Fallback content (monograms) may have replaced failed images: fit again after the swap.
   fitAll(el);
   if (ctx.static && waits.length) await Promise.race([Promise.all(waits), sleep(8000)]);

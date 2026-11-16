@@ -1,0 +1,40 @@
+/* Shared design tokens. Original/absent designs retain all existing styling. */
+.scene [data-design-size] { font-size: var(--design-size); }
+.design-frame { position: absolute; inset: 30px; pointer-events: none; z-index: 40; color: var(--accent2); }
+[data-design-frame="line"] > .design-frame { border: 2px solid currentColor; opacity: .75; }
+[data-design-frame="double"] > .design-frame { border: 6px double currentColor; opacity: .85; }
+[data-design-frame="corners"] > .design-frame { background: linear-gradient(currentColor,currentColor) left top/85px 4px, linear-gradient(currentColor,currentColor) left top/4px 85px, linear-gradient(currentColor,currentColor) right top/85px 4px, linear-gradient(currentColor,currentColor) right top/4px 85px, linear-gradient(currentColor,currentColor) left bottom/85px 4px, linear-gradient(currentColor,currentColor) left bottom/4px 85px, linear-gradient(currentColor,currentColor) right bottom/85px 4px, linear-gradient(currentColor,currentColor) right bottom/4px 85px; background-repeat: no-repeat; }
+.scene[data-design-boxes]:not([data-design-boxes="original"]) :is(.glass,.pcard,.mcard,.srow,.tv-panel,.tl-row,.so-fixture,.so-lineup-team,.so-roster-lineup .so-lineup-row,.nb-match,.nb-qualified,.format-stage,.sp-tile,.brk-box,.mu-card,.wait-match) { border-radius: var(--design-radius); border: 1px solid rgba(var(--accent2-rgb),.5); box-shadow: none; }
+.scene[data-design-boxes="glass"] :is(.glass,.pcard,.mcard,.srow,.tv-panel,.tl-row,.so-fixture,.so-lineup-team,.so-roster-lineup .so-lineup-row,.nb-match,.nb-qualified,.format-stage,.sp-tile,.brk-box,.mu-card,.wait-match) { background: linear-gradient(130deg,rgba(var(--primary-rgb),var(--design-opacity)),rgba(15,20,30,.6)); }
+.scene[data-design-boxes="solid"] :is(.glass,.pcard,.mcard,.srow,.tv-panel,.tl-row,.so-fixture,.so-lineup-team,.so-roster-lineup .so-lineup-row,.nb-match,.nb-qualified,.format-stage,.sp-tile,.brk-box,.mu-card,.wait-match) { background: rgba(var(--primary-rgb),var(--design-opacity)); border-left: 4px solid var(--accent2); }
+.scene[data-design-boxes="outline"] :is(.glass,.pcard,.mcard,.srow,.tv-panel,.tl-row,.so-fixture,.so-lineup-team,.so-roster-lineup .so-lineup-row,.nb-match,.nb-qualified,.format-stage,.sp-tile,.brk-box,.mu-card,.wait-match) { background: rgba(8,12,20,.3); border: 2px solid var(--accent2); box-shadow: inset 0 0 26px rgba(var(--accent2-rgb),.08); }
+.design-preview-focus { outline: 3px dashed #47e7dd !important; outline-offset: 7px; }
+/* Layout tab of the Graphics designer (preview iframe only). --le-px = one screen pixel of the scaled preview. */
+.le-editing, .le-editing * { pointer-events: auto !important; cursor: default; }
+.le-editing iframe { pointer-events: none !important; }
+.le-overlay { position: fixed; inset: 0; z-index: 1000; pointer-events: none; --le-c: #47e7dd; }
+.le-box { position: absolute; box-sizing: border-box; pointer-events: none; }
+.le-box.is-hover { outline: calc(var(--le-px) * 1) solid rgba(71,231,221,.65); }
+.le-box.is-linked { outline: calc(var(--le-px) * 1) dashed var(--le-c); }
+.le-box.is-selected { outline: calc(var(--le-px) * 1.5) solid var(--le-c); box-shadow: 0 0 0 calc(var(--le-px) * 1.5) rgba(0,0,0,.45); }
+.le-tag { position: absolute; left: 0; bottom: 100%; margin-bottom: calc(var(--le-px) * 5); padding: calc(var(--le-px) * 2) calc(var(--le-px) * 6); background: var(--le-c); color: #06201e; font: 700 calc(var(--le-px) * 11)/1.3 Arial, sans-serif; white-space: nowrap; border-radius: calc(var(--le-px) * 2); }
+.le-h { position: absolute; width: calc(var(--le-px) * 10); height: calc(var(--le-px) * 10); margin: calc(var(--le-px) * -5); background: #fff; border: calc(var(--le-px) * 1.5) solid #0d7f78; box-sizing: border-box; pointer-events: auto; touch-action: none; }
+.le-h-nw { left: 0; top: 0; cursor: nwse-resize; } .le-h-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.le-h-ne { left: 100%; top: 0; cursor: nesw-resize; } .le-h-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.le-h-n { left: 50%; top: 0; cursor: ns-resize; } .le-h-s { left: 50%; top: 100%; cursor: ns-resize; }
+.le-h-w { left: 0; top: 50%; cursor: ew-resize; } .le-h-e { left: 100%; top: 50%; cursor: ew-resize; }
+.le-guide { position: absolute; background: #ff4fa3; }
+.le-guide-x { top: 0; bottom: 0; width: calc(var(--le-px) * 1); }
+.le-guide-y { left: 0; right: 0; height: calc(var(--le-px) * 1); }
+/* Custom icons of the Graphics designer. */
+img.role-ic, .tlogo > img.mono { object-fit: contain; }
+.design-icon-tint { display: block; background: currentColor; -webkit-mask: var(--design-icon) center / contain no-repeat; mask: var(--design-icon) center / contain no-repeat; }
+.tlogo > .design-icon-tint { width: 100%; height: 100%; }
+.te-editing { outline: calc(2 * var(--le-px, 1px)) solid #47e7dd; outline-offset: calc(6 * var(--le-px, 1px)); box-shadow: 0 0 0 9999px rgba(0,0,0,.18); }
+.te-editing,.te-edit { overflow: visible !important; text-overflow: clip !important; caret-color: #47e7dd; }
+.te-edit { outline: 0; white-space: nowrap; user-select: text !important; -webkit-user-select: text !important; }
+.te-edit::selection { background: rgba(71,231,221,.35); }
+.te-hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.te-box { border: calc(2 * var(--le-px, 1px)) solid #47e7dd; }
+.te-warning,.te-editing.fit-clip { outline-color: #f2c230; border-color: #f2c230; }
+.te-warning .le-tag { background: #f2c230; color: #15171c; }

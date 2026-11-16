@@ -11,40 +11,33 @@ import {
   ctlSegmented, jobView,
 } from '../ui.js';
 import { ROLES, roleRank, teamOptions } from '../scenes.js';
+import { filterMenu, applyFacets } from '../filter-menu.js';
 
 export const id = 'players';
 let els = null;
-const filter = { team: '', role: '', q: '', showHidden: true };
+const filter = { showHidden: true };
 
 export function mount(root) {
-  const teamSel = ctlSelect({ options: teamFilterOptions(store.state) });
-  const roleSel = ctlSelect({ options: [{ value: '', label: t('players.allRoles') }, ...ROLES.map((r) => ({ value: r, label: t(`roles.${r}`) })), { value: '-', label: t('roles.') }] });
-  const search = h('input.input.search-input', { type: 'search', placeholder: t('players.search'), 'aria-label': t('players.search'), dataset: { search: '1' } });
   const showHidden = ctlToggle({ value: true, label: t('common.showHidden') });
-  teamSel.el.setAttribute('aria-label', t('players.team'));
-  roleSel.el.setAttribute('aria-label', t('players.role'));
-  teamSel.el.addEventListener('change', () => { filter.team = teamSel.el.value; render(); });
-  roleSel.el.addEventListener('change', () => { filter.role = roleSel.el.value; render(); });
-  search.addEventListener('input', debounce(() => { filter.q = search.value; render(); }, 120));
   showHidden.input.addEventListener('change', () => { filter.showHidden = showHidden.get(); render(); });
 
   const head = sectionHead(t('players.title'), '', btn(t('players.add'), { kind: 'primary', iconName: 'plus', onclick: () => edit(null) }));
-  const bar = h('div.toolbar', h('div.search-wrap', icon('search', 16), search), teamSel.el, roleSel.el, showHidden.el);
+  const menu = filterMenu({
+    searchLabel: t('players.search'), storageKey: 'players', extra: [showHidden.el], onChange: () => render(),
+    rows: [{ id: 'team', label: t('players.team'), allLabel: t('players.allTeams') }, { id: 'role', label: t('players.role'), allLabel: t('players.allRoles'), secondary: true }],
+  });
+  const bar = menu.el;
   const list = h('div.player-groups');
   const empty = h('div', { hidden: true });
   root.append(head, bar, list, empty);
-  els = { head, list, empty, teamSel, roleSel, search };
+  els = { head, list, empty, menu, showHidden };
   update(store.state);
 }
 
 /** Navigation option: { team } preselects a team filter. */
 export function show(opts) {
   if (!els || !opts) return;
-  if (opts.team !== undefined) { filter.team = opts.team; els.teamSel.el.value = opts.team; render(); }
-}
-
-function teamFilterOptions(state) {
-  return [{ value: '', label: t('players.allTeams') }, ...teamOptions(state), { value: '-', label: t('common.teamless') }];
+  if (opts.team !== undefined) els.menu.set('team', opts.team || 'all');
 }
 
 export async function upload(playerId, file) {
@@ -92,14 +85,17 @@ function groupEl(g) {
 function render() {
   const state = store.state;
   if (!els || !state) return;
-  const q = norm(filter.q).trim();
-  const players = state.players.filter((p) => {
-    if (!filter.showHidden && p.hidden) return false;
-    if (filter.team === '-' ? store.team(p.teamId) : filter.team && p.teamId !== filter.team) return false;
-    if (filter.role === '-' ? p.role : filter.role && p.role !== filter.role) return false;
-    if (q && !norm(`${p.nick} ${p.name} ${p.extId ?? ''}`).includes(q)) return false;
-    return true;
-  });
+  const menu = els.menu;
+  menu.forTournament(state.activeTournamentId);
+  const teamKey = (p) => (store.team(p.teamId) ? p.teamId : '-');
+  const roleKey = (p) => p.role || '-';
+  const result = applyFacets(state.players.filter((p) => filter.showHidden || !p.hidden), menu, { team: teamKey, role: roleKey },
+    (p) => `${p.nick} ${p.name} ${p.extId ?? ''} ${store.team(p.teamId)?.tag ?? ''}`);
+  const teamItems = [...state.teams].sort((a, b) => a.name.localeCompare(b.name)).map((tm) => ({ id: tm.id, label: tm.tag || tm.name, count: result.counts.team.get(tm.id) ?? 0 }));
+  menu.paintRow('team', [...teamItems, { id: '-', label: t('common.teamless'), count: result.counts.team.get('-') ?? 0 }], result.totals.team);
+  menu.paintRow('role', [...ROLES.map((r) => ({ id: r, label: t(`roles.${r}`), count: result.counts.role.get(r) ?? 0 })), { id: '-', label: t('roles.'), count: result.counts.role.get('-') ?? 0 }], result.totals.role);
+  menu.setCount(t('players.sub', { n: result.shown.length }));
+  const players = result.shown;
   const sortP = (a, b) => roleRank(a.role) - roleRank(b.role) || a.nick.localeCompare(b.nick);
   const teams = [...state.teams].sort((a, b) => a.name.localeCompare(b.name));
   const groups = [];
@@ -129,17 +125,14 @@ function render() {
 }
 
 function clearFilter() {
-  Object.assign(filter, { team: '', role: '', q: '', showHidden: true });
-  els.teamSel.el.value = '';
-  els.roleSel.el.value = '';
-  els.search.value = '';
-  render();
+  filter.showHidden = true;
+  els.showHidden.set(true);
+  els.menu.set('team', 'all');
+  els.menu.set('role', 'all');
 }
 
 export function update(state) {
   if (!els || !state) return;
-  els.teamSel.setOptions(teamFilterOptions(state));
-  els.teamSel.el.value = filter.team;
   render();
 }
 
@@ -151,7 +144,8 @@ export async function edit(playerId) {
   const nick = f.add('nick', ctlText({ value: p?.nick ?? '', maxlength: 40 }));
   const name = f.add('name', ctlText({ value: p?.name ?? '', maxlength: 80 }));
   const role = f.add('role', ctlSegmented({ options: [...ROLES.map((r) => ({ value: r, label: t(`roles.${r}`) })), { value: '', label: '—', title: t('roles.') }], value: p?.role ?? '', size: 'sm' }));
-  const team = f.add('teamId', ctlSelect({ options: [{ value: '', label: t('common.teamless') }, ...teamOptions(store.state)], value: p?.teamId ?? (isNew && filter.team && filter.team !== '-' ? filter.team : '') }));
+  const team = f.add('teamId', ctlSelect({ options: [{ value: '', label: t('common.teamless') }, ...teamOptions(store.state)], value: p?.teamId ?? (isNew && !['all', '-'].includes(els?.menu.value('team')) ? els.menu.value('team') : '') }));
+  const lineup = f.add('lineup', ctlSelect({ value: p?.lineup || '', options: [{ value: '', label: t('rosterEditor.automatic') }, { value: 'starter', label: t('rosterEditor.starter') }, { value: 'substitute', label: t('rosterEditor.substitute') }] }));
   const country = f.add('country', ctlText({ value: p?.country ?? '', maxlength: 2, placeholder: 'gr', list: 'country-codes' }));
   const captain = f.add('captain', ctlToggle({ value: !!p?.captain, label: t('players.captain') }));
   const hidden = f.add('hidden', ctlToggle({ value: !!p?.hidden, label: t('players.hidden') }));
@@ -195,6 +189,7 @@ export async function edit(playerId) {
       field(t('players.nick'), nick),
       field(t('players.name'), name),
       field(t('players.role'), role, { span: 2 }),
+      field(t('rosterEditor.lineup'), lineup, { span: 2 }),
       field(t('players.team'), team),
       field(t('players.country'), country, { hint: t('players.countryHint') }),
       h('div.span-2.toggle-row', captain.el, hidden.el)),

@@ -1,0 +1,199 @@
+/* HLL broadcast graphics — animated background plates (Graphics designer › Background › Motion).
+ *
+ * Applied to the plate that ui.js plate() builds:
+ *
+ *   <div class="plate plate-main" data-bga="drift|rays|embers" data-bga-level="normal" [data-framed]
+ *        style="--bga-t:-12.345s; --bga-time:1; --bga-k:1">
+ *     <div class="plate-img"></div>
+ *     <div class="plate-shade"></div>
+ *     <div class="bga-fx" aria-hidden="true"></div>          drift + rays: empty
+ *     <div class="bga-fx" aria-hidden="true"><i></i>×32</div> embers: always 32 empty <i>
+ *   </div>
+ *
+ * Custom properties (set inline by plate(); the defaults below are "normal"):
+ *   --bga-t     wall-clock phase: -((Date.now() % loopMs) / 1000) + 's', loopMs = 48000 × --bga-time.
+ *               Every period below divides the 48 s master loop, so a scene that is rebuilt on a data
+ *               refresh, or a second browser source, continues the loop at the same frame (no restart).
+ *   --bga-time  duration multiplier: slow 1.5 · normal 1 · fast .75 (bigger = slower).
+ *   --bga-k     intensity: subtle .6 · normal 1 · strong 1.35.
+ *   data-bga-level  subtle | normal | strong (same choice as --bga-k): Embers shows 16 / 24 / 32 sparks.
+ *   data-framed set when the image is a built-in brand plate with a border baked in (main / social):
+ *               the drift zoom stays small enough that the border never leaves the canvas.
+ *
+ * Only transform and opacity animate (compositor-only). No filter, no blur, no blend mode.
+ * Frozen frame: with animation: none (static=1 PNG export, .is-static, prefers-reduced-motion) every
+ * layer falls back to its base style below, which is the designed still: drift = the original plate,
+ * rays = the fan at rest, embers = the sparks where they are at loop time 0.
+ *
+ * Periods (normal speed):  drift 48 s (24 s alternate) · glow 48 s
+ *                          rays  48 s sway A, 24 s sway B, 24 s / 16 s breathing
+ *                          embers 12 / 16 / 24 s rises (two sway cycles each), 16 s heat
+ */
+
+.plate[data-bga] {
+  --bga-t: 0s;
+  --bga-time: 1;
+  --bga-k: 1;
+  --bga-zoom: .05;
+  --bga-light: 255, 234, 200;
+  --bga-ember: 255, 158, 72;
+  isolation: isolate; /* the z-index of the layers below stays inside the plate */
+}
+.plate[data-bga][data-framed] { --bga-zoom: .016; }
+.plate > .bga-fx { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: strict; }
+
+/* ---------- 1 · DRIFT — a slow cinematic push across the image, with a soft travelling light ---------- */
+
+.plate[data-bga="drift"] > .plate-img {
+  transform-origin: 50% 45%;
+  animation: bga-drift calc(24s * var(--bga-time)) cubic-bezier(.37, 0, .63, 1) var(--bga-t) infinite alternate;
+}
+@keyframes bga-drift {
+  from { transform: scale(calc(1 + var(--bga-zoom) * .3 * var(--bga-k))) translate3d(calc(var(--bga-zoom) * var(--bga-k) * 12%), calc(var(--bga-zoom) * var(--bga-k) * 6%), 0); }
+  to   { transform: scale(calc(1 + var(--bga-zoom) * var(--bga-k))) translate3d(calc(var(--bga-zoom) * var(--bga-k) * -30%), calc(var(--bga-zoom) * var(--bga-k) * -26%), 0); }
+}
+.plate[data-bga="drift"] > .bga-fx::before {
+  content: ''; position: absolute; left: -10%; top: -25%; width: 70%; height: 110%;
+  background: radial-gradient(closest-side, rgba(var(--bga-light), .30), rgba(var(--bga-light), .10) 45%, rgba(var(--bga-light), 0));
+  opacity: calc(.42 * var(--bga-k));
+  animation: bga-glow-travel calc(48s * var(--bga-time)) ease-in-out var(--bga-t) infinite;
+}
+@keyframes bga-glow-travel {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: calc(.30 * var(--bga-k)); }
+  50%      { transform: translate3d(85%, 8%, 0); opacity: calc(.55 * var(--bga-k)); }
+}
+
+/* ---------- 2 · RAYS — light of Olympus: a fan of god rays from above that sways and breathes ---------- */
+
+.plate[data-bga="rays"] > .plate-shade { z-index: 1; } /* rays sit under the readability shade */
+.plate[data-bga="rays"] > .bga-fx::before,
+.plate[data-bga="rays"] > .bga-fx::after {
+  content: ''; position: absolute; left: 50%; top: -90px; width: 2400px; height: 1560px; margin-left: -1200px;
+  transform-origin: 50% 0;
+  -webkit-mask-image: radial-gradient(farthest-side at 50% 0, #000 0%, rgba(0, 0, 0, .5) 28%, rgba(0, 0, 0, .14) 58%, transparent 88%);
+  mask-image: radial-gradient(farthest-side at 50% 0, #000 0%, rgba(0, 0, 0, .5) 28%, rgba(0, 0, 0, .14) 58%, transparent 88%);
+}
+/* Layer A: broad, irregular shafts (soft ramps, uneven gaps), plus the bloom at the source. */
+.plate[data-bga="rays"] > .bga-fx::before {
+  background:
+    radial-gradient(closest-side at 50% 0, rgba(var(--bga-light), .34), rgba(var(--bga-light), 0) 100%) 50% 0 / 1200px 560px no-repeat,
+    conic-gradient(from 143deg at 50% 0,
+      transparent 0deg,
+      rgba(var(--bga-light), .16) 4deg, rgba(var(--bga-light), .22) 7deg, transparent 12deg,
+      transparent 16deg,
+      rgba(var(--bga-light), .30) 20deg, transparent 24deg,
+      rgba(var(--bga-light), .12) 27deg, rgba(var(--bga-light), .26) 31deg, rgba(var(--bga-light), .10) 36deg, transparent 39deg,
+      rgba(var(--bga-light), .34) 42deg, transparent 45.5deg,
+      transparent 48deg,
+      rgba(var(--bga-light), .14) 52deg, rgba(var(--bga-light), .24) 57deg, transparent 62deg,
+      rgba(var(--bga-light), .18) 66deg, transparent 70deg,
+      transparent 360deg);
+  opacity: calc(.6 * var(--bga-k));
+  animation:
+    bga-sway-a calc(24s * var(--bga-time)) cubic-bezier(.37, 0, .63, 1) var(--bga-t) infinite alternate,
+    bga-breathe-a calc(12s * var(--bga-time)) cubic-bezier(.37, 0, .63, 1) var(--bga-t) infinite alternate;
+}
+/* Layer B: a few fine shafts that drift the other way and fade in and out, so the fan never looks rigid. */
+.plate[data-bga="rays"] > .bga-fx::after {
+  background: conic-gradient(from 150deg at 50% 0,
+    transparent 0deg,
+    rgba(var(--bga-light), .30) 6deg, transparent 8.5deg,
+    transparent 19deg,
+    rgba(var(--bga-light), .24) 23deg, transparent 25.5deg,
+    rgba(var(--bga-light), .34) 33deg, transparent 35deg,
+    transparent 44deg,
+    rgba(var(--bga-light), .28) 49deg, transparent 51.5deg,
+    rgba(var(--bga-light), .20) 58deg, transparent 61deg,
+    transparent 360deg);
+  opacity: calc(.32 * var(--bga-k));
+  animation:
+    bga-sway-b calc(12s * var(--bga-time)) cubic-bezier(.37, 0, .63, 1) var(--bga-t) infinite alternate,
+    bga-breathe-b calc(8s * var(--bga-time)) cubic-bezier(.37, 0, .63, 1) var(--bga-t) infinite alternate;
+}
+@keyframes bga-sway-a { from { transform: rotate(-2.4deg); } to { transform: rotate(2.4deg); } }
+@keyframes bga-sway-b { from { transform: rotate(1.8deg); } to { transform: rotate(-1.8deg); } }
+@keyframes bga-breathe-a { from { opacity: calc(.42 * var(--bga-k)); } to { opacity: calc(.78 * var(--bga-k)); } }
+@keyframes bga-breathe-b { from { opacity: calc(.46 * var(--bga-k)); } to { opacity: calc(.08 * var(--bga-k)); } }
+
+/* ---------- 3 · EMBERS — sparks that rise from the arena floor in three depths ---------- */
+
+.plate[data-bga="embers"] > .bga-fx::before {
+  content: ''; position: absolute; left: -10%; right: -10%; bottom: -8%; height: 46%;
+  background: radial-gradient(50% 100% at 50% 100%, rgba(var(--bga-ember), .34), rgba(var(--bga-ember), .10) 55%, rgba(var(--bga-ember), 0));
+  opacity: calc(.70 * var(--bga-k));
+  animation: bga-heat calc(8s * var(--bga-time)) cubic-bezier(.37, 0, .63, 1) var(--bga-t) infinite alternate;
+}
+@keyframes bga-heat { from { opacity: calc(.45 * var(--bga-k)); } to { opacity: calc(.85 * var(--bga-k)); } }
+/* Each <i> is a full-height column that paints its spark at the top edge, so translateY(-100%) is one plate
+   height in any canvas (1920×1080, 1080×1350, 1080×1920) without container units. One animation per spark
+   (rise + two slow sway cycles + fade): each <i> stays a single leaf layer, with no render surface. */
+.plate[data-bga="embers"] > .bga-fx > i {
+  position: absolute; top: 100%; left: var(--x); width: calc(var(--z) * 3); height: 100%; margin-left: calc(var(--z) * -1.5);
+  background: radial-gradient(circle closest-side, rgba(255, 250, 236, 1) 0, rgba(255, 214, 140, 1) 17%, rgba(var(--bga-ember), .78) 30%, rgba(var(--bga-ember), .24) 56%, rgba(var(--bga-ember), 0) 100%) 50% 0 / 100% calc(var(--z) * 3) no-repeat;
+  transform: translate3d(calc(var(--dx) * var(--p)), calc(var(--p) * -100%), 0);
+  opacity: calc(var(--po) * var(--bga-k));
+  animation: bga-rise calc(var(--t) * var(--bga-time)) linear calc(var(--bga-t) + var(--d) * var(--bga-time)) infinite;
+}
+@keyframes bga-rise {
+  0%    { transform: translate3d(0, 0, 0); opacity: 0; }
+  10%   { opacity: calc(var(--o) * var(--bga-k)); }
+  12.5% { transform: translate3d(calc(var(--dx) * .125 + var(--sw) * .7), -12.5%, 0); }
+  25%   { transform: translate3d(calc(var(--dx) * .25 + var(--sw)), -25%, 0); }
+  37.5% { transform: translate3d(calc(var(--dx) * .375 + var(--sw) * .7), -37.5%, 0); }
+  50%   { transform: translate3d(calc(var(--dx) * .5), -50%, 0); opacity: calc(var(--o) * .75 * var(--bga-k)); }
+  62.5% { transform: translate3d(calc(var(--dx) * .625 - var(--sw) * .7), -62.5%, 0); }
+  75%   { transform: translate3d(calc(var(--dx) * .75 - var(--sw)), -75%, 0); }
+  87.5% { transform: translate3d(calc(var(--dx) * .875 - var(--sw) * .7), -87.5%, 0); }
+  88%   { opacity: 0; }
+  100%  { transform: translate3d(var(--dx), -100%, 0); opacity: 0; }
+}
+/* Spark table (gen: jobs/proto/gen-embers.mjs). Depths interleave far, mid, far, mid, near; x follows a bit-reversal order,
+   so the first 16 / 24 / 32 sparks are each an even mix. Intensity shows 16 (subtle), 24 (normal) or 32 (strong):
+   CPU cost grows with the number of sparks, so the level sets both the brightness and the count. */
+.plate[data-bga="embers"]:not([data-bga-level="strong"]) > .bga-fx > i:nth-child(n+25) { display: none; }
+.plate[data-bga="embers"][data-bga-level="subtle"] > .bga-fx > i:nth-child(n+17) { display: none; }
+.bga-fx > i:nth-child(1) { --x: 3.5%; --z: 4.3px; --t: 24s; --d: -12.24s; --o: 0.66; --dx: 3px; --sw: -8px; --p: 0.510; --po: 0.482; }
+.bga-fx > i:nth-child(2) { --x: 50.7%; --z: 7.1px; --t: 16s; --d: -11.48s; --o: 0.91; --dx: -4px; --sw: -11px; --p: 0.717; --po: 0.292; }
+.bga-fx > i:nth-child(3) { --x: 28.3%; --z: 4.5px; --t: 24s; --d: -12.98s; --o: 0.70; --dx: 20px; --sw: -9px; --p: 0.541; --po: 0.469; }
+.bga-fx > i:nth-child(4) { --x: 75.9%; --z: 5.2px; --t: 24s; --d: -20.47s; --o: 0.95; --dx: 37px; --sw: 10px; --p: 0.853; --po: 0.051; }
+.bga-fx > i:nth-child(5) { --x: 15.3%; --z: 10.6px; --t: 12s; --d: -2.48s; --o: 0.56; --dx: -81px; --sw: 15px; --p: 0.207; --po: 0.519; }
+.bga-fx > i:nth-child(6) { --x: 63.8%; --z: 4.4px; --t: 24s; --d: -1.17s; --o: 0.64; --dx: -25px; --sw: 7px; --p: 0.049; --po: 0.312; }
+.bga-fx > i:nth-child(7) { --x: 39.1%; --z: 7.3px; --t: 16s; --d: -6.63s; --o: 0.95; --dx: 67px; --sw: 10px; --p: 0.414; --po: 0.761; }
+.bga-fx > i:nth-child(8) { --x: 86.7%; --z: 3.2px; --t: 24s; --d: -7.09s; --o: 0.70; --dx: 26px; --sw: -8px; --p: 0.295; --po: 0.611; }
+.bga-fx > i:nth-child(9) { --x: 8.9%; --z: 5.5px; --t: 16s; --d: -10.15s; --o: 0.90; --dx: -51px; --sw: -13px; --p: 0.635; --po: 0.436; }
+.bga-fx > i:nth-child(10) { --x: 58.1%; --z: 13.2px; --t: 16s; --d: -2.65s; --o: 0.53; --dx: -96px; --sw: 23px; --p: 0.166; --po: 0.507; }
+.bga-fx > i:nth-child(11) { --x: 33.9%; --z: 3.9px; --t: 24s; --d: -17.90s; --o: 0.73; --dx: -4px; --sw: -5px; --p: 0.746; --po: 0.193; }
+.bga-fx > i:nth-child(12) { --x: 82.4%; --z: 5.0px; --t: 16s; --d: -8.00s; --o: 0.89; --dx: -37px; --sw: -14px; --p: 0.500; --po: 0.667; }
+.bga-fx > i:nth-child(13) { --x: 20.7%; --z: 4.5px; --t: 24s; --d: -14.99s; --o: 0.75; --dx: 17px; --sw: -7px; --p: 0.625; --po: 0.377; }
+.bga-fx > i:nth-child(14) { --x: 69.6%; --z: 5.9px; --t: 16s; --d: -11.55s; --o: 0.87; --dx: 38px; --sw: 12px; --p: 0.722; --po: 0.271; }
+.bga-fx > i:nth-child(15) { --x: 45.8%; --z: 11.8px; --t: 12s; --d: -3.40s; --o: 0.57; --dx: 91px; --sw: 14px; --p: 0.284; --po: 0.508; }
+.bga-fx > i:nth-child(16) { --x: 93.8%; --z: 4.4px; --t: 24s; --d: -9.16s; --o: 0.60; --dx: 11px; --sw: 8px; --p: 0.382; --po: 0.492; }
+.bga-fx > i:nth-child(17) { --x: 6.3%; --z: 7.4px; --t: 16s; --d: -9.26s; --o: 0.88; --dx: 3px; --sw: -11px; --p: 0.579; --po: 0.526; }
+.bga-fx > i:nth-child(18) { --x: 53.7%; --z: 4.5px; --t: 24s; --d: -15.87s; --o: 0.68; --dx: 3px; --sw: -7px; --p: 0.661; --po: 0.295; }
+.bga-fx > i:nth-child(19) { --x: 31.0%; --z: 5.4px; --t: 24s; --d: -17.91s; --o: 0.93; --dx: -42px; --sw: 10px; --p: 0.746; --po: 0.244; }
+.bga-fx > i:nth-child(20) { --x: 78.1%; --z: 10.1px; --t: 16s; --d: -4.52s; --o: 0.64; --dx: 38px; --sw: 24px; --p: 0.283; --po: 0.568; }
+.bga-fx > i:nth-child(21) { --x: 18.9%; --z: 4.1px; --t: 24s; --d: -16.31s; --o: 0.71; --dx: -16px; --sw: 7px; --p: 0.679; --po: 0.282; }
+.bga-fx > i:nth-child(22) { --x: 67.2%; --z: 5.0px; --t: 16s; --d: -7.76s; --o: 0.93; --dx: 18px; --sw: -13px; --p: 0.485; --po: 0.709; }
+.bga-fx > i:nth-child(23) { --x: 42.8%; --z: 3.9px; --t: 24s; --d: -4.54s; --o: 0.72; --dx: 4px; --sw: 7px; --p: 0.189; --po: 0.684; }
+.bga-fx > i:nth-child(24) { --x: 91.2%; --z: 7.2px; --t: 24s; --d: -19.92s; --o: 0.92; --dx: 49px; --sw: -11px; --p: 0.830; --po: 0.091; }
+.bga-fx > i:nth-child(25) { --x: 12.3%; --z: 13.1px; --t: 16s; --d: -12.01s; --o: 0.62; --dx: 85px; --sw: 14px; --p: 0.751; --po: 0.158; }
+.bga-fx > i:nth-child(26) { --x: 61.0%; --z: 3.1px; --t: 24s; --d: -10.62s; --o: 0.67; --dx: 5px; --sw: -7px; --p: 0.443; --po: 0.530; }
+.bga-fx > i:nth-child(27) { --x: 37.1%; --z: 7.1px; --t: 24s; --d: -20.53s; --o: 0.91; --dx: 17px; --sw: 13px; --p: 0.855; --po: 0.044; }
+.bga-fx > i:nth-child(28) { --x: 85.1%; --z: 4.3px; --t: 24s; --d: -20.10s; --o: 0.61; --dx: -5px; --sw: 6px; --p: 0.837; --po: 0.052; }
+.bga-fx > i:nth-child(29) { --x: 24.7%; --z: 6.1px; --t: 24s; --d: -9.64s; --o: 0.92; --dx: 38px; --sw: 12px; --p: 0.402; --po: 0.748; }
+.bga-fx > i:nth-child(30) { --x: 71.8%; --z: 12.7px; --t: 16s; --d: -13.94s; --o: 0.54; --dx: -2px; --sw: 21px; --p: 0.871; --po: 0.009; }
+.bga-fx > i:nth-child(31) { --x: 48.0%; --z: 3.1px; --t: 24s; --d: -4.64s; --o: 0.68; --dx: 6px; --sw: -9px; --p: 0.193; --po: 0.637; }
+.bga-fx > i:nth-child(32) { --x: 95.8%; --z: 5.9px; --t: 16s; --d: -5.08s; --o: 0.96; --dx: -2px; --sw: 15px; --p: 0.317; --po: 0.833; }
+
+/* ---------- frozen frame: PNG export, static pages and reduced motion ---------- */
+
+.is-static .plate[data-bga] > .plate-img,
+.is-static .plate[data-bga] > .bga-fx::before,
+.is-static .plate[data-bga] > .bga-fx::after,
+.is-static .plate[data-bga] > .bga-fx > i { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .plate[data-bga]:not(.bga-force) > .plate-img,
+  .plate[data-bga]:not(.bga-force) > .bga-fx::before,
+  .plate[data-bga]:not(.bga-force) > .bga-fx::after,
+  .plate[data-bga]:not(.bga-force) > .bga-fx > i { animation: none !important; }
+}

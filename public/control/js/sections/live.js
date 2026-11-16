@@ -9,6 +9,9 @@ import { quickCards, sceneUrl, cueText, describe, sameCue, cleanParams, matchOpt
 import { sceneBuilder } from '../builder.js';
 import { MASTER_URL } from '../../../shared/scenes.js';
 import { graphicBrowser } from '../graphic-browser.js';
+import { editRosters } from '../roster-editor.js';
+import { editBracketDraw } from '../bracket-editor.js';
+import { matchSheetPanel } from '../match-sheet-panel.js';
 
 let cue = null; // { scene, params }
 let els = null;
@@ -50,6 +53,7 @@ export function mount(root, nav) {
   }));
   const builderPanel = h('section.panel.builder-panel', h('h2.panel-title', t('live.builder')), h('p.panel-sub', t('live.builderHint')), builder.el, field(t('live.graphicName'), graphicName), saveBtn);
   const score = scorePanel();
+  const matchSheet = matchSheetPanel();
 
   const keys = h('p.live-keys', icon('key', 14), t('live.keys'));
   root.append(h('div.live',
@@ -57,9 +61,9 @@ export function mount(root, nav) {
     h('div.monitors', preview.el, program.el),
     h('section.graphics-dashboard', browser.menu, h('div.live-lower',
       h('div.live-picker', picker, browser.empty, keys),
-      h('aside.live-side', score.el, builderPanel)))));
+      h('aside.live-side', matchSheet.el, score.el, builderPanel)))));
 
-  els = { preview, program, takeBtn, exportBtn, exportInfo, hideBtn, showBtn, picker, score, browser };
+  els = { preview, program, takeBtn, exportBtn, exportInfo, hideBtn, showBtn, picker, score, browser, matchSheet };
   for (const m of [preview, program]) new ResizeObserver(() => fit(m)).observe(m.screen);
   if (store.live?.scene) setCue({ scene: store.live.scene, params: store.live.params });
   else paintPreview();
@@ -228,7 +232,13 @@ function cardEl(c) {
     if (!(await confirmDialog({ title: t('common.confirmDelete', { name: c.title }), body: t('live.removeGraphicHint') }))) return;
     try { await api.del(`/api/graphics/${encodeURIComponent(c.savedId)}`); store.refresh(); } catch (error) { toastError(error); }
   } }) : null;
-  const b = h('article.scene-card', { tabIndex: 0, dataset: { key: c.key } }, select, h('div.scene-card-actions', previewButton, takeButton, remove));
+  const match = store.match(c.params?.match || store.state.nextMatch);
+  const rosterScene = ['roster', 'social-roster'].includes(c.scene);
+  const rosterTeams = rosterScene ? [c.params?.team] : ['versus', 'simple-vs', 'social-versus'].includes(c.scene) ? [match?.teamA, match?.teamB] : [];
+  const editRoster = rosterTeams.some(id => store.team(id)) ? btn(t(rosterScene ? 'rosterEditor.edit' : 'rosterEditor.editBoth'), { size: 'sm', iconName: 'players', onclick: () => editRosters(rosterTeams) }) : null;
+  const bracketId = c.params?.bracket || store.state.settings.brackets?.[0]?.id;
+  const draw = c.scene === 'bracket' && store.state.settings.brackets?.some(bracket => bracket.id === bracketId && bracket.format === 'gsl') ? btn('Set opening draw', { size: 'sm', onclick: () => editBracketDraw(bracketId) }) : null;
+  const b = h('article.scene-card', { tabIndex: 0, dataset: { key: c.key } }, select, h('div.scene-card-actions', previewButton, takeButton, editRoster, draw, remove));
   if (c.warn) b.classList.add('is-warn');
   select.addEventListener('click', () => setCue(c));
   select.addEventListener('dblclick', () => { if (c.ready !== false) { setCue(c); take(); } });
@@ -340,6 +350,8 @@ function paintScore() {
   s.status.el.hidden = false;
   s.sel.set(m.id);
   s.status.set(m.status);
+  const fromSheet = !!store.state?.settings?.matchSheet?.enabled;
+  s.status.el.querySelectorAll('button,select,input').forEach(input => { input.disabled = fromSheet; });
   const side = (teamId, key) => {
     const tm = store.team(teamId);
     const val = m[key];
@@ -352,9 +364,9 @@ function paintScore() {
       thumb(tm?.logo ?? null, 'logo-lg'),
       h('span.score-tag', { title: tm?.name ?? '' }, tm?.tag ?? m[key === 'scoreA' ? 'teamALabel' : 'teamBLabel'] ?? t('common.tbd')),
       h('div.stepper',
-        h('button.btn.btn-icon.btn-sm', { type: 'button', 'aria-label': `${tm?.tag ?? ''} −1`, onclick: () => step(-1), disabled: !val }, icon('minus', 14)),
+        h('button.btn.btn-icon.btn-sm', { type: 'button', 'aria-label': `${tm?.tag ?? ''} −1`, onclick: () => step(-1), disabled: !val || fromSheet }, icon('minus', 14)),
         h('span.score-val', val ?? '–'),
-        h('button.btn.btn-icon.btn-sm', { type: 'button', 'aria-label': `${tm?.tag ?? ''} +1`, onclick: () => step(1) }, icon('plus', 14))));
+        h('button.btn.btn-icon.btn-sm', { type: 'button', 'aria-label': `${tm?.tag ?? ''} +1`, onclick: () => step(1), disabled: fromSheet }, icon('plus', 14))));
   };
   setKids(s.body,
     h('div.score-meta', `${m.date ? fmtDate(m.date, 'short') : 'Date TBD'} · ${m.time || 'Time TBD'} · ${m.bestOf ? `BO${m.bestOf}` : 'BO TBD'}${m.stage ? ` · ${m.stage}` : ''}`),
@@ -368,6 +380,7 @@ export function update(state) {
   const all = quickCards(state);
   els.browser.update(all, state);
   builder.refresh(state);
+  els.matchSheet.update();
   els.score.sel.setOptions(matchOptions(state));
   paintScore();
   paintFlags();

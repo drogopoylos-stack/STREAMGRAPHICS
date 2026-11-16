@@ -2,15 +2,41 @@
 import { h } from './dom.js';
 import { t } from './strings.js';
 import { store } from './store.js';
-import { ctlSelect, ctlSegmented, ctlCombo, ctlText, ctlNumber, field } from './ui.js';
+import { ctlSelect, ctlSegmented, ctlCombo, ctlText, ctlNumber, ctlToggle, field } from './ui.js';
 import { SCENES, sceneName, teamOptions, matchOptions, playerComboOptions, featureAutoTitle, cleanParams } from './scenes.js';
-import { isPortrait } from '../../shared/scenes.js';
+import { isPortrait, sceneDefinition, sceneFormats } from '../../shared/scenes.js';
+
+/** Every bracket round of the active tournament, for the social-schedule Round picker (empty value = by day). */
+export function roundOptions(state) {
+  const brackets = state.settings.brackets ?? [];
+  const grouped = brackets.length > 1;
+  return brackets.flatMap(bracket => (bracket.rounds ?? []).filter(round => round.id).map(round => ({
+    value: round.id,
+    label: round.name || round.id,
+    ...(grouped ? { group: bracket.name || bracket.id } : {}),
+  })));
+}
+
+/**
+ * Params of social-schedule: a bracket round replaces the day; pagination still applies.
+ * `results: false` asks the scene for the VS layout of played matches (params.results = '0').
+ */
+export function socialScheduleParams({ round, day, date, today, page, results } = {}) {
+  const params = {};
+  if (round) params.round = round;
+  else params.day = day === 'date' ? (date || today) : day;
+  if (page > 1) params.page = page;
+  if (results === false) params.results = '0';
+  return params;
+}
 
 export function sceneBuilder({ onChange } = {}) {
   const state = store.state;
   const allowedScenes = st => SCENES.filter(s => !st.settings.enabledScenes?.length || st.settings.enabledScenes.includes(s)).map(s => ({ value: s, label: sceneName(s) }));
   const scene = ctlSelect({ options: allowedScenes(state), value: allowedScenes(state).find(s => s.value === 'versus')?.value || allowedScenes(state)[0]?.value });
   const team = ctlSelect({ options: teamOptions(state) });
+  const bracketOptions = st => (st.settings.brackets || []).map(bracket => ({ value: bracket.id, label: bracket.name }));
+  const bracket = ctlSelect({ options: bracketOptions(state) });
   const match = ctlSelect({ options: matchOptions(state, { auto: true }) });
   const day = ctlSegmented({ options: [{ value: 'today', label: t('scenes.today') }, { value: 'tomorrow', label: t('scenes.tomorrow') }, { value: 'date', label: t('live.date') }, { value: 'all', label: t('scenes.allDays') }], value: 'today', size: 'sm' });
   const date = ctlText({ type: 'date', value: state.today });
@@ -22,8 +48,12 @@ export function sceneBuilder({ onChange } = {}) {
   const background = ctlSelect({ options: backgroundOpts(state) });
   const effect = ctlSelect({ value: 'halftone', options: [{ value: 'halftone', label: t('live.effectHalftone') }, { value: 'prism', label: t('live.effectPrism') }, { value: 'none', label: t('live.effectNone') }] });
   const page = ctlNumber({ value: 1, min: 1, max: 99 });
+  const format = ctlSelect({ options: [{ value: 'story', label: 'Story 1080×1920' }, { value: 'post', label: 'Post 1080×1350' }], value: 'story' });
+  const round = ctlSelect({ options: roundOptions(state) });
+  const results = ctlToggle({ value: true });
 
   const fTeam = field(t('live.team'), team);
+  const fBracket = field(t('scenes.bracket'), bracket);
   const fMatch = field(t('live.match'), match);
   const fDay = field(t('live.day'), day);
   const fDate = field(null, date);
@@ -35,8 +65,13 @@ export function sceneBuilder({ onChange } = {}) {
   const fBackground = field(t('live.background'), background);
   const fEffect = field(t('live.effect'), effect, { hint: t('live.effectHint') });
   const fPage = field(t('live.page'), page, { hint: t('live.pageHint') });
+  const fFormat = field('Social format', format, { hint: 'Post 1080×1350 or story 1080×1920.' });
+  const fRound = field('Round', round, { hint: 'Show one bracket round. Empty = by day.' });
+  const fResults = field('Show results', results, { hint: 'Played matches show the final score instead of VS.' });
 
-  const el = h('div.builder', field(t('live.scene'), scene), fTeam, fMatch, fDay, fDate, fSrc, fFeature, fPA, fPB, fMode, fBackground, fEffect, fPage);
+  const el = h('div.builder', field(t('live.scene'), scene), fBracket, fTeam, fMatch, fDay, fDate, fRound, fResults, fSrc, fFeature, fPA, fPB, fFormat, fMode, fBackground, fEffect, fPage);
+
+  const isSocial = (id) => sceneDefinition(id)?.group === 'social';
 
   function refreshPlayers(st) {
     const options = playerComboOptions(st);
@@ -52,32 +87,46 @@ export function sceneBuilder({ onChange } = {}) {
 
   function layout() {
     const s = scene.get();
-    fTeam.hidden = s !== 'roster';
+    const schedule = s === 'social-schedule';
+    const rounds = roundOptions(store.state);
+    fTeam.hidden = s !== 'roster' && s !== 'social-roster';
+    fBracket.hidden = s !== 'bracket' || bracketOptions(store.state).length < 2;
     fMatch.hidden = !['versus', 'simple-vs', 'social-versus'].includes(s);
-    fDay.hidden = s !== 'schedule' && s !== 'social-schedule';
+    fRound.hidden = !schedule || !rounds.length;
+    fResults.hidden = !schedule;
+    fDay.hidden = s !== 'schedule' && !(schedule && !round.get());
     fDate.hidden = fDay.hidden || day.get() !== 'date';
     fSrc.hidden = s !== 'matchup';
     fFeature.hidden = s !== 'matchup' || src.get() !== 'feature';
-    fPA.hidden = fPB.hidden = s !== 'social-versus' && (s !== 'matchup' || src.get() !== 'players');
+    fPA.hidden = fPB.hidden = (s !== 'social-versus' || store.state.settings.rosterStyle === 'text') && (s !== 'matchup' || src.get() !== 'players');
     fMode.hidden = isPortrait(s);
-    fEffect.hidden = s !== 'social-versus';
+    fEffect.hidden = s !== 'social-versus' || store.state.settings.rosterStyle === 'text';
     fPage.hidden = s !== 'social-schedule' && !(s === 'schedule' && day.get() === 'all');
+    const formats = sceneFormats(s);
+    fFormat.hidden = !isSocial(s);
+    format.setOptions(formats.map(value => ({ value, label: value === 'post' ? 'Post 1080×1350' : 'Story 1080×1920' })));
+    if (formats.length && !formats.includes(format.get())) format.set(formats[0]);
     refreshPlayers(store.state);
   }
 
   function get() {
     const s = scene.get();
     const params = {};
-    if (s === 'roster') params.team = team.get();
+    if (s === 'roster' || s === 'social-roster') params.team = team.get();
+    if (s === 'bracket' && bracket.get()) params.bracket = bracket.get();
     if (['versus', 'simple-vs', 'social-versus'].includes(s)) params.match = match.get();
-    if (s === 'schedule' || s === 'social-schedule') params.day = day.get() === 'date' ? (date.get() || state.today) : day.get();
-    if ((s === 'social-schedule' || day.get() === 'all') && page.get() > 1) params.page = page.get();
+    if (s === 'schedule') {
+      params.day = day.get() === 'date' ? (date.get() || state.today) : day.get();
+      if (day.get() === 'all' && page.get() > 1) params.page = page.get();
+    }
+    if (s === 'social-schedule') Object.assign(params, socialScheduleParams({ round: round.get(), day: day.get(), date: date.get(), today: state.today, page: page.get(), results: results.get() }));
     if (s === 'social-versus') { params.playerA = pa.get(); params.playerB = pb.get(); params.effect = effect.get(); }
     if (s === 'matchup') {
       if (src.get() === 'feature') params.feature = feature.get();
       else { params.a = pa.get(); params.b = pb.get(); }
     }
     if (mode.get() && !isPortrait(s)) params.mode = mode.get();
+    if (isSocial(s)) params.format = format.get() || 'story';
     if (background.get()) params.background = background.get();
     return { scene: s, params: cleanParams(params) };
   }
@@ -87,6 +136,7 @@ export function sceneBuilder({ onChange } = {}) {
     if (!cue?.scene) return;
     const p = cue.params ?? {};
     scene.set(cue.scene);
+    if (cue.scene === 'bracket') bracket.set(p.bracket || bracketOptions(store.state)[0]?.value);
     if (p.team) team.set(p.team);
     if (['versus', 'simple-vs', 'social-versus'].includes(cue.scene)) match.set(p.match ?? '');
     if (cue.scene === 'schedule' || cue.scene === 'social-schedule') {
@@ -94,6 +144,8 @@ export function sceneBuilder({ onChange } = {}) {
       else { day.set('date'); date.set(p.day); }
     }
     if (cue.scene === 'social-versus') { pa.set(p.playerA ?? null); pb.set(p.playerB ?? null); effect.set(p.effect ?? 'halftone'); }
+    if (cue.scene === 'social-schedule') { round.set(p.round ?? ''); results.set(p.results !== '0'); }
+    if (isSocial(cue.scene)) format.set(p.format ?? 'story');
     page.set(p.page ?? 1);
     background.set(p.background ?? '');
     if (cue.scene === 'matchup') {
@@ -106,9 +158,11 @@ export function sceneBuilder({ onChange } = {}) {
 
   function refresh(st) {
     scene.setOptions(allowedScenes(st));
+    bracket.setOptions(bracketOptions(st));
     team.setOptions(teamOptions(st));
     match.setOptions(matchOptions(st, { auto: true }));
     feature.setOptions(featureOpts(st));
+    round.setOptions(roundOptions(st));
     pa.setOptions(playerComboOptions(st));
     pb.setOptions(playerComboOptions(st));
     background.setOptions(backgroundOpts(st));

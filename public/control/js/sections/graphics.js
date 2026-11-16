@@ -7,16 +7,17 @@ import { store } from '../store.js';
 import { trackJob, latestJob, onAnyJob, getJob } from '../jobs.js';
 import { toast, toastError, busy, btn, sectionHead, panel, field, ctlText, copyField, jobView, imgBox, emptyState, badge } from '../ui.js';
 import { sceneBuilder } from '../builder.js';
-import { cueText, sceneUrl } from '../scenes.js';
+import { cueText, sceneUrl, sceneName } from '../scenes.js';
 import { backgroundPanel } from '../background-panel.js';
-import { dimensionsFor, isPortrait } from '../../../shared/scenes.js';
+import { filterMenu, applyFacets } from '../filter-menu.js';
+import { guessScene } from '../../../shared/output-types.js';
+import { dimensionsFor, isPortrait, SCENE_DEFINITIONS } from '../../../shared/scenes.js';
 
 export const id = 'graphics';
 let els = null;
 let shownJob = null;
 let files = null; // [{ name, file, url, mtime }] newest first; null = not loaded yet
 const fresh = new Set(); // file names rendered by this panel since it was opened
-let filter = '';
 let loading = null;
 
 const baseName = (r) => r.name ?? String(r.file ?? '').split(/[\\/]/).pop();
@@ -45,9 +46,9 @@ export function mount(root) {
   let previewSize = { width: 1920, height: 1080 };
   const fitPreview = () => preview.style.setProperty('--preview-scale', String(preview.clientWidth / previewSize.width));
   const paintPreview = cue => {
-    previewSize = dimensionsFor(cue.scene);
+    previewSize = dimensionsFor(cue.scene, cue.params);
     preview.style.aspectRatio = `${previewSize.width} / ${previewSize.height}`;
-    preview.classList.toggle('is-portrait', isPortrait(cue.scene));
+    preview.classList.toggle('is-portrait', isPortrait(cue.scene, cue.params));
     previewFrame.style.width = `${previewSize.width}px`;
     previewFrame.style.height = `${previewSize.height}px`;
     const url = sceneUrl(cue.scene, cue.params, { static: 1 });
@@ -69,7 +70,7 @@ export function mount(root) {
   renderBtn.addEventListener('click', () => busy(renderBtn, async () => {
     const cue = builder.get();
     const body = { scene: cue.scene, params: cue.params };
-    if (name.get()) body.name = name.get();
+    if (name.get()) body.name = cue.params?.format ? `${name.get()}-${cue.params.format}` : name.get();
     try {
       const r = await api.post('/api/render', body);
       fresh.add(baseName(r));
@@ -82,25 +83,24 @@ export function mount(root) {
     builder.el, preview, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut);
   const backgrounds = backgroundPanel();
 
-  // Every PNG in the output folder (also renders from earlier sessions).
-  const search = h('input.input.search-input', { type: 'search', placeholder: t('graphics.filesFilter'), 'aria-label': t('graphics.filesFilter'), dataset: { search: '' } });
-  search.addEventListener('input', () => { filter = search.value.trim().toLowerCase(); paintFiles(); });
+  // Every PNG in the output folder (also renders from earlier sessions), with the menu of the Live page.
   const refreshBtn = btn(t('graphics.refresh'), { size: 'sm', iconName: 'refresh', onclick: () => busy(refreshBtn, () => loadFiles()) });
   const filesSub = h('span.files-sub');
   const filesGrid = h('div.grid.grid-renders.files-grid', { role: 'list' });
   const filesMsg = h('div.files-msg');
+  const filesMore = h('button.btn.btn-sm.graphic-more', { type: 'button', hidden: true, onclick: () => { fileLimit += FILE_PAGE; paintFiles(); } });
+  const filesMenu = filterMenu({
+    searchLabel: t('graphics.filesFilter'), storageKey: 'output-files', extra: [refreshBtn], onChange: () => { fileLimit = FILE_PAGE; paintFiles(); },
+    rows: [{ id: 'type', label: t('graphics.filesTypes'), allLabel: t('live.browse.allTypes') }, { id: 'when', label: t('graphics.filesWhen'), allLabel: t('live.browse.all'), secondary: true }],
+  });
   const filesPanel = h('section.panel.files-panel',
-    h('div.files-head',
-      h('div.files-titles', h('h2.panel-title', t('graphics.files')), filesSub),
-      h('div.spacer'),
-      h('div.search-wrap.files-search', icon('search', 16), search),
-      refreshBtn),
-    filesMsg, filesGrid);
+    h('div.files-head', h('div.files-titles', h('h2.panel-title', t('graphics.files')), filesSub)),
+    filesMenu.el, filesMsg, filesGrid, filesMore);
 
   root.append(sectionHead(t('graphics.title'), t('graphics.sub')),
     h('div.graphics-grid', h('div.col', allPanel, backgrounds.el, outPanel), h('div.col', singlePanel)),
     filesPanel);
-  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, backgrounds, paintPreview };
+  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, filesMenu, filesMore, backgrounds, paintPreview };
   paintPreview(builder.get());
   onAnyJob(() => paintJob());
   window.addEventListener('hll:output', (e) => { if (e.detail) fresh.add(baseName(e.detail)); loadFiles(); });
@@ -139,16 +139,41 @@ function paintFiles() {
     setKids(els.filesMsg, h('div.files-loading', h('span.spinner'), h('span', t('common.loading'))));
     return;
   }
-  const shown = filter ? files.filter((f) => f.name.toLowerCase().includes(filter)) : files;
-  els.filesSub.textContent = filter
-    ? t('graphics.filesFiltered', { shown: shown.length, n: files.length })
-    : t('graphics.filesSub', { n: files.length });
+  const menu = els.filesMenu;
+  menu.forTournament(store.state?.activeTournamentId);
+  const { shown, counts, totals } = applyFacets(files, menu, { type: fileType, when: (f) => fileWhen(f.mtime) }, (f) => `${f.name} ${typeLabel(fileType(f))}`);
+  const types = [...counts.type.keys()].sort((a, b) => typeOrder(a) - typeOrder(b));
+  menu.paintRow('type', types.map((id) => ({ id, label: typeLabel(id), count: counts.type.get(id) })), totals.type);
+  menu.paintRow('when', WHEN.map((id) => ({ id, label: t(`graphics.when.${id}`), count: counts.when.get(id) ?? 0 })), totals.when);
+  menu.setCount(t('graphics.filesCount', { n: shown.length }));
+  els.filesSub.textContent = shown.length === files.length
+    ? t('graphics.filesSub', { n: files.length })
+    : t('graphics.filesFiltered', { shown: shown.length, n: files.length });
   if (!els.filesMsg.classList.contains('is-error')) {
     if (!files.length) setKids(els.filesMsg, emptyState({ iconName: 'image', title: t('graphics.filesEmpty'), body: t('graphics.filesEmptyBody') }));
-    else if (!shown.length) setKids(els.filesMsg, h('p.muted', t('graphics.filesNoMatch')));
+    else if (!shown.length) setKids(els.filesMsg, h('p.muted', t('live.browse.empty')));
     else els.filesMsg.replaceChildren();
   }
-  keyedList(els.filesGrid, shown, (f) => f.name, (f) => renderCard(f, { lazy: true, role: 'listitem' }), (f) => JSON.stringify([f.url, f.mtime, fresh.has(f.name)]));
+  keyedList(els.filesGrid, shown.slice(0, fileLimit), (f) => f.name, (f) => renderCard(f, { lazy: true, role: 'listitem' }), (f) => JSON.stringify([f.url, f.mtime, fresh.has(f.name)]));
+  els.filesMore.hidden = shown.length <= fileLimit;
+  els.filesMore.textContent = t('live.browse.more', { n: shown.length - fileLimit });
+}
+
+const WHEN = ['today', 'yesterday', 'week', 'older'];
+const FILE_PAGE = 12;
+let fileLimit = FILE_PAGE;
+const fileType = (f) => f.scene || guessScene(f.name);
+const typeOrder = (id) => { const i = SCENE_DEFINITIONS.findIndex((s) => s.id === id); return i < 0 ? 99 : i; };
+function typeLabel(id) {
+  if (id === 'other') return t('live.browse.other');
+  const label = t(`live.browse.typeLabels.${id}`);
+  return label.startsWith('live.browse.') ? sceneName(id) : label;
+}
+/** today / yesterday / last 7 days / older, from the local calendar day of the file. */
+function fileWhen(mtime) {
+  const day = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const days = Math.round((day(Date.now()) - day(mtime || 0)) / 86400000);
+  return days <= 0 ? 'today' : days === 1 ? 'yesterday' : days < 7 ? 'week' : 'older';
 }
 
 function renderCard(r, { lazy = true, role } = {}) {

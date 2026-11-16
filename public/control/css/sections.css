@@ -358,6 +358,12 @@ body:has(.page:not([hidden]) .save-bar:not([hidden])) .toasts { bottom: 92px; }
 .scene-card-select { display: block; width: 100%; border: 0; padding: 0; text-align: left; background: transparent; color: inherit; }
 .scene-card-actions { display: flex; align-items: center; gap: 5px; padding: 0 8px 9px; flex-wrap: wrap; }
 .scene-card-actions .btn { flex: 1; }
+.scene-card-actions .btn:nth-child(3) { flex-basis: 100%; }
+.roster-edit-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.roster-edit-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; gap: 7px; padding: 9px; border: 1px solid var(--line); border-radius: var(--r-2); }
+.roster-edit-row .input { min-width: 0; padding-left: 7px; padding-right: 7px; }
+.roster-edit-row > input { grid-column: 1 / -1; }
+.roster-edit-head { font-size: 11px; color: var(--text-3); margin-top: 8px; }
 .scene-card { text-align: left; }
 
 /* Graphic type menu stays reachable while browsing a large tournament. */

@@ -13,13 +13,13 @@ export function splitRoster(players = []) {
   const used = new Set();
   const starters = [];
   for (const role of LANES) {
-    const cands = players.filter((p) => p.role === role && !used.has(p.id));
+    const cands = players.filter((p) => p.role === role && p.lineup !== 'substitute' && !used.has(p.id));
     const pick = cands.find((p) => p.captain) || cands[0];
     if (pick) { starters.push(pick); used.add(pick.id); }
   }
   for (const p of players) {
     if (starters.length >= 5) break;
-    if (!used.has(p.id) && !p.role) { starters.push(p); used.add(p.id); }
+    if (!used.has(p.id) && !p.role && p.lineup !== 'substitute') { starters.push(p); used.add(p.id); }
   }
   const bench = players.filter((p) => !used.has(p.id))
     .sort((a, b) => (a.role === 'Coach') - (b.role === 'Coach'));

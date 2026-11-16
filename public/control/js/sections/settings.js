@@ -5,6 +5,7 @@ import { t } from '../strings.js';
 import { api } from '../api.js';
 import { store } from '../store.js';
 import { trackJob } from '../jobs.js';
+import { matchSheetPanel } from '../match-sheet-panel.js';
 import {
   toast, toastError, busy, btn, sectionHead, panel, field, createForm, confirmDialog, iconBtn,
   ctlText, ctlNumber, ctlSelect, ctlSegmented, ctlToggle, ctlRange, ctlColor, ctlTextarea, dropZone, jobView,
@@ -42,6 +43,8 @@ export function mount(root) {
     try { await api.put('/api/settings', { leagueLogo: '/brand/hll-logo.png' }); toast(t('common.saved'), 'ok'); store.refresh(); } catch (e) { toastError(e); }
   }));
   const lookPanel = panel(t('settings.look'),
+    h('div.form-block', h('h3.block-title', 'Fonts, text & graphic assets'), h('p.field-hint', 'Use the shared Graphics designer to edit screen text, visibility, fonts, borders and reusable presets.'), h('a.btn.btn-sm', { href: '#/designer' }, 'Open Graphics designer')),
+    field(t('rosterEditor.presentation'), F('rosterStyle', ctlSelect({ options: [{ value: 'photos', label: t('rosterEditor.photos') }, { value: 'text', label: t('rosterEditor.text') }] }))),
     field(t('settings.mode'), F('mode', ctlSegmented({ options: [{ value: 'full', label: t('settings.modeFull') }, { value: 'simple', label: t('settings.modeSimple') }] })), { hint: t('settings.modeHint') }),
     field(t('settings.preset'), preset, { hint: t('settings.presetHint') }),
     h('div.form-grid.cols-4',
@@ -52,6 +55,26 @@ export function mount(root) {
     h('div.upload-pair',
       h('div.form-block', h('div.block-head', h('h3.block-title', t('settings.background')), bgReset), bgZone, h('p.field-hint', t('settings.backgroundHint'))),
       h('div.form-block.logo-block', h('div.block-head', h('h3.block-title', t('settings.leagueLogo')), logoReset), logoZone, h('p.field-hint', t('settings.leagueLogoHint')))));
+
+  // Social graphics
+  const socialLogo = F('socialLogo', ctlText({ placeholder: 'https://… or /media/…' }));
+  const socialLogoPreview = h('img', {
+    class: 'social-logo-preview', alt: 'Social logo preview', hidden: true,
+    style: { display: 'block', maxWidth: '240px', maxHeight: '84px', marginTop: '8px', padding: '8px', borderRadius: '6px', background: 'rgba(255,255,255,.06)', objectFit: 'contain' },
+  });
+  const paintSocialLogo = () => {
+    const value = String(socialLogo.get() ?? '').trim();
+    socialLogoPreview.hidden = !value;
+    if (value) socialLogoPreview.src = value; else socialLogoPreview.removeAttribute('src');
+  };
+  socialLogo.el.addEventListener('input', paintSocialLogo);
+  socialLogo.el.addEventListener('change', paintSocialLogo);
+  const socialPanel = panel('Social graphics',
+    h('p.panel-sub', 'Style and logo for the social posts and stories. Classic keeps the current social scenes.'),
+    h('div.form-grid',
+      field('Social graphics style', F('socialStyle', ctlSelect({ options: [{ value: 'classic', label: 'Classic' }, { value: 'supercup', label: 'SUPER CUP' }] })), { span: 2, hint: 'SUPER CUP uses the 2027 tournament look for social post and story graphics.' }),
+      field('Social logo URL', socialLogo, { span: 2, hint: 'Leave empty for the typed header. Use an uploaded image URL or an https link.' })),
+    h('div.form-block', h('h3.block-title', 'Logo preview'), socialLogoPreview));
 
   // Photo pipeline
   const reAll = btn(t('settings.reprocessAll'), { iconName: 'refresh' });
@@ -105,20 +128,21 @@ export function mount(root) {
       field(t('settings.hllgrBase'), F('hllgr.baseUrl', ctlText({ mono: true, type: 'url' })), { span: 2 })));
 
   // Save bar
+  const matchSheet = matchSheetPanel({ configure: true });
   const saveBtn = btn(t('common.saveChanges'), { kind: 'primary', kbd: 'Ctrl+S', onclick: () => save() });
   const discardBtn = btn(t('common.discard'), { onclick: () => { fillFromState(true); } });
   const bar = h('div.save-bar', { hidden: true, role: 'region', 'aria-label': t('common.unsaved') },
     h('span.save-bar-msg', icon('alert', 16), t('common.unsaved')), h('div.spacer'), discardBtn, saveBtn);
 
   const body = h('div.settings-grid',
-    h('div.col', leaguePanel, lookPanel, sysPanel),
+    h('div.col', leaguePanel, matchSheet.el, lookPanel, socialPanel, sysPanel),
     h('div.col', photoPanel, statsPanel, bracketPanel));
   root.append(sectionHead(t('settings.title'), t('settings.sub')), body, bar);
   root.addEventListener('input', paintDirty);
   root.addEventListener('change', paintDirty);
   root.addEventListener('click', (e) => { if (e.target.closest('.stat-defs')) setTimeout(paintDirty, 0); });
 
-  els = { bar, saveBtn, bgZone, bgReset, logoZone, logoReset, paintEmbed };
+  els = { bar, saveBtn, bgZone, bgReset, logoZone, logoReset, paintEmbed, matchSheet, paintSocialLogo };
   fillFromState(true);
 }
 
@@ -139,6 +163,7 @@ function fillFromState(force) {
   els.bgReset.hidden = !s.theme?.bgImage;
   els.logoZone.setSrc(s.leagueLogo || '/brand/hll-logo.png');
   els.logoReset.hidden = !s.leagueLogo || s.leagueLogo === '/brand/hll-logo.png';
+  els.paintSocialLogo?.();
   paintDirty();
 }
 
@@ -177,6 +202,7 @@ async function brandUpload(slot, file) {
 
 export function update() {
   if (!els) return;
+  els.matchSheet.update();
   fillFromState(false);
 }
 

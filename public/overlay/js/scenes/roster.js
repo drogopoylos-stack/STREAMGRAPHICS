@@ -1,10 +1,11 @@
 // Team roster: crest + name + record, the starting five as tall cards, the bench / coaches in a row.
 import { h, fit, plate, crest, playerPhoto, roleIcon, roleLabel, flagBadge, meander, leagueLogo, recordText, sponsorStrip } from '../ui.js';
 import { splitRoster } from './common.js';
+import { textRoster } from './text-lineups.js';
 
 function starterCard(p, i, simple) {
   const d = 520 + i * 85;
-  return h('div', { class: `pcard ${simple ? 'pcard-simple' : ''}`, in: 'up', d, dur: 700 },
+  return h('div', { 'data-ref': p.id ? `player:${p.id}` : null, class: `pcard ${simple ? 'pcard-simple' : ''}`, in: 'up', d, dur: 700 },
     h('div', { class: 'pc-glow' }),
     simple
       ? h('div', { class: 'pc-mark' }, roleIcon(p.role))
@@ -23,7 +24,7 @@ function starterCard(p, i, simple) {
 function benchChip(p, simple) {
   const isCoach = p.role === 'Coach';
   const sub = isCoach ? 'Coach' : p.role ? `Sub · ${roleLabel(p.role)}` : 'Substitute';
-  return h('div', { class: `chip ${isCoach ? 'is-coach' : ''} ${simple ? 'chip-simple' : ''}` },
+  return h('div', { 'data-ref': p.id ? `player:${p.id}` : null, class: `chip ${isCoach ? 'is-coach' : ''} ${simple ? 'chip-simple' : ''}` },
     simple ? h('div', { class: 'chip-mark' }, roleIcon(p.role)) : playerPhoto(p, 'chip-photo'),
     h('div', { class: 'chip-text' },
       fit('chip-nick display', p.nick),
@@ -32,16 +33,18 @@ function benchChip(p, simple) {
 
 export default {
   render(data, ctx) {
+    if (data.rosterStyle === 'text') return textRoster(data, ctx);
     const simple = ctx.mode === 'simple';
     const { team, record, league } = data;
-    const { starters, bench } = splitRoster(data.players || []);
+    const { starters, bench: allBench } = splitRoster(data.players || []);
+    const bench = data.showBench === false ? [] : allBench;
     const spons = sponsorStrip(data.sponsors, { label: 'Partners', max: 3, cls: 'r-spons' });
     const compact = bench.length > 6 || (spons && bench.length > 4);
 
     return h('div', { class: `${spons ? 'has-spons' : ''} ${bench.length ? '' : 'no-bench'}` },
       plate(data.theme, 'stage', ctx),
       h('div', { class: 'r-vignette' }),
-      h('header', { class: 'r-head' },
+      h('header', { class: 'r-head', 'data-ref': team?.id ? `team:${team.id}` : null },
         crest(team, 'r-crest', { in: 'scale', d: 220, dur: 750 }),
         h('div', { class: 'r-title' },
           h('div', { class: 'kicker', in: 'left', d: 300 }, 'Team Roster', h('span', { class: 'r-season' }, league?.season || '')),

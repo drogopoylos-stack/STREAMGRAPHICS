@@ -3,8 +3,9 @@ import { h, setKids, keyedList, isTextTarget } from './dom.js';
 import { icon } from './icons.js';
 import { t } from './strings.js';
 import { store, connectStream } from './store.js';
+import { api } from './api.js';
 import { syncJobs, allJobs, onAnyJob, onJobFinished } from './jobs.js';
-import { toast, drawerState, closeDrawer, drawerSave, drawerOnState, isDialogOpen, jobKindLabel, jobView } from './ui.js';
+import { toast, toastError, drawerState, closeDrawer, drawerSave, drawerOnState, isDialogOpen, jobKindLabel, jobView } from './ui.js';
 import { describe } from './scenes.js';
 import * as live from './sections/live.js';
 import * as teams from './sections/teams.js';
@@ -16,10 +17,12 @@ import * as importer from './sections/import.js';
 import * as graphics from './sections/graphics.js';
 import * as settings from './sections/settings.js';
 import * as help from './sections/help.js';
+import * as designer from './sections/designer.js';
+import * as wizard from './wizard.js';
 import { createTournamentControls } from './tournaments.js';
 
-const SECTIONS = [live, teams, players, matches, matchups, sponsors, importer, graphics, settings, help];
-const byId = new Map(SECTIONS.map((s) => [s.id, s]));
+const SECTIONS = [live, teams, players, matches, matchups, sponsors, importer, graphics, settings, help, designer];
+const byId = new Map([...SECTIONS, wizard].map((s) => [s.id, s]));
 const pages = new Map(); // id → { el, mounted, stale }
 let current = null;
 let navEls = new Map();
@@ -93,7 +96,7 @@ function show(id, opts) {
   const sec = byId.get(id);
   let page = pages.get(id);
   if (!page) {
-    const el = h(`section.page.page-${id}`, { id: `page-${id}`, hidden: true, 'aria-labelledby': `nav-${id}` });
+    const el = h(`section.page.page-${id}`, { id: `page-${id}`, hidden: true, 'aria-labelledby': id === wizard.id ? 'wz-title' : `nav-${id}` });
     document.getElementById('main').append(el);
     page = { el, mounted: false, stale: false };
     pages.set(id, page);
@@ -117,7 +120,7 @@ function show(id, opts) {
     for (const [nid, a] of navEls) {
       if (nid === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     }
-    document.title = `${t(`nav.${id}`)} · ${t('app.title')}`;
+    document.title = `${id === wizard.id ? 'Create tournament' : t(`nav.${id}`)} · ${t('app.title')}`;
     document.getElementById('main').scrollTop = 0;
   }
   page.el.hidden = false;
@@ -167,6 +170,10 @@ function buildHeader() {
   jobsBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleJobs(); });
   document.addEventListener('click', (e) => { if (!jobsPop.hidden && !jobsPop.contains(e.target)) toggleJobs(false); });
   const conn = h('span.conn', { role: 'status' }, h('span.conn-dot'), h('span.conn-text'));
+  // Data sync with the other PCs: status, and a click uploads and gets updates now.
+  const sync = h('button.jobs-chip.sync-chip', { type: 'button', hidden: true, onclick: () => syncClick() }, h('span.sync-dot'), h('span.sync-text'));
+  window.addEventListener('hll:sync', (e) => paintSync(e.detail));
+  api.get('/api/sync').then(paintSync).catch(() => {});
   const tournament = createTournamentControls({ isDirty: () => !!drawerState()?.isDirty() || settings.isDirty() });
   const bar = h('div.topbar-inner',
     h('a.brand', { href: '#/live' }, logo, title),
@@ -174,9 +181,10 @@ function buildHeader() {
     h('div.onair-wrap', onair, hideBtn),
     h('div.spacer'),
     h('div.jobs-wrap', jobsBtn, jobsPop),
+    sync,
     conn);
   setKids(document.getElementById('topbar'), bar);
-  hdr = { logo, title, onair, hideBtn, jobsBtn, jobsPop, conn, tournament };
+  hdr = { logo, title, onair, hideBtn, jobsBtn, jobsPop, conn, tournament, sync };
   paintHeaderMeta(store.state);
 }
 
@@ -203,6 +211,26 @@ function paintOnAir(lv) {
   hdr.onair.querySelector('.onair-what').textContent = what;
   hdr.onair.setAttribute('aria-label', `${on ? t('onair.on') : t('onair.off')}: ${what}`);
   hdr.hideBtn.hidden = !on;
+}
+
+const SYNC_TEXT = { synced: 'Synced', syncing: 'Syncing…', offline: 'Offline · syncs later', error: 'Sync problem' };
+function paintSync(s) {
+  if (!hdr || !s) return;
+  const el = hdr.sync;
+  el.hidden = !s.enabled;
+  const text = s.behind ? 'Updates from another PC' : s.pending && s.status === 'synced' ? 'Saving to cloud soon' : SYNC_TEXT[s.status] || 'Synced';
+  el.dataset.status = s.behind ? 'behind' : s.status;
+  el.querySelector('.sync-text').textContent = text;
+  el.title = [s.message, s.lastUpload ? `Last upload: ${new Date(s.lastUpload).toLocaleString()}` : '', 'Click to sync now'].filter(Boolean).join(' · ');
+}
+async function syncClick() {
+  hdr.sync.disabled = true;
+  try {
+    const s = await api.post('/api/sync/now');
+    paintSync(s);
+    if (s.status === 'synced') { toast(s.message || 'Data is synced with your other PCs.', s.message ? 'warn' : 'ok'); await store.load(); }
+    else toast(s.message || 'Sync did not finish.', 'warn');
+  } catch (e) { toastError(e); } finally { hdr.sync.disabled = false; }
 }
 
 function paintConn() {
@@ -243,13 +271,13 @@ function paintJobList() {
 function buildNav() {
   const nav = document.getElementById('nav');
   const items = SECTIONS.map((sec, i) => {
-    const n = i === 9 ? 0 : i + 1;
-    const a = h('a.nav-item', { href: `#/${sec.id}`, id: `nav-${sec.id}`, title: `${t(`nav.${sec.id}`)} (${t('nav.shortcut', { n })})` },
-      icon(sec.id, 18), h('span.nav-label', t(`nav.${sec.id}`)), h('span.nav-badge', { hidden: true }), h('kbd.nav-kbd', String(n)));
+    const n = i === 9 ? 0 : i < 9 ? i + 1 : null;
+    const a = h('a.nav-item', { href: `#/${sec.id}`, id: `nav-${sec.id}`, title: `${t(`nav.${sec.id}`)}${n != null ? ` (${t('nav.shortcut', { n })})` : ''}` },
+      icon(sec.id === 'designer' ? 'layers' : sec.id, 18), h('span.nav-label', t(`nav.${sec.id}`)), h('span.nav-badge', { hidden: true }), n != null ? h('kbd.nav-kbd', String(n)) : null);
     navEls.set(sec.id, a);
     return a;
   });
-  setKids(nav, h('div.nav-list', items.slice(0, 1), h('div.nav-sep'), items.slice(1, 6), h('div.nav-sep'), items.slice(6)));
+  setKids(nav, h('div.nav-list', items.slice(0, 1), h('div.nav-sep'), items.slice(1, 6), h('div.nav-sep'), items.slice(6, 8), items[10], items.slice(8, 10)));
 }
 
 function paintBadges(state) {
@@ -287,6 +315,7 @@ function onKey(e) {
     e.preventDefault();
     if (drawerState()) drawerSave();
     else if (current === 'settings') settings.save();
+    else if (current === 'designer') designer.save();
     return;
   }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
