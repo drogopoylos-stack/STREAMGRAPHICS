@@ -21,6 +21,6 @@ try {
         & npx --yes wrangler pages project create hll-broadcast --production-branch main --force
         if ($LASTEXITCODE -ne 0) { throw 'Could not create the Cloudflare Pages project.' }
     }
-    & npx --yes wrangler pages deploy cloud/download --project-name hll-broadcast --branch main --force
+    & npx --yes wrangler pages deploy cloud/download --project-name hll-broadcast --branch main --commit-dirty=true
     if ($LASTEXITCODE -ne 0) { throw 'Cloudflare Pages deployment failed.' }
 } finally { Pop-Location }
