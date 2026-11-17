@@ -6,6 +6,8 @@ import multer from 'multer';
 import sharp from 'sharp';
 import { readIndex, guessScene } from './output-index.js';
 import { startDataSync, syncNow, syncState } from './data-sync.js';
+import { createFeedPublisher, createFeedClient } from './feed.js';
+import { renderVideo, setVideoPort } from './video.js';
 import * as store from './db.js';
 import { ROOT, ASSETS, RAW, newId, deepMerge, isoDay } from './util.js';
 import { startJob, getJob, listJobs, jobsRunning } from './jobs.js';
@@ -13,6 +15,7 @@ import { sceneData, nextMatch, SCENES } from './scenes.js';
 import { setEntityImage, reprocessAll, assignUnmatched, importItem, listLocalFolder } from './assets.js';
 import { listDriveFolder } from './drive.js';
 import { syncHllgr } from './hllgr.js';
+import { dimensionsFor } from '../public/shared/scenes.js';
 import { renderScene, renderAll, setPort, closeBrowser } from './render.js';
 import { refreshDdragon } from './ddragon.js';
 import { executable as photocraftExecutable } from './photocraft.js';
@@ -27,7 +30,7 @@ import { processLogo } from './assets.js';
 import { buildBracketEmbed } from './bracket-embed.js';
 import { createAccessMiddleware, obsLinkFor } from './remote-access.js';
 import { startLiveStream, LIVE_HEARTBEAT_MS } from './live-stream.js';
-import { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, accessKeys } from './remote.js';
+import { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, cloudConfig, accessKeys } from './remote.js';
 
 const PORT = Number(process.env.PORT) || 4610;
 store.load();
@@ -37,12 +40,15 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 
 
 app.use(express.json({ limit: '2mb' }));
 app.use(createAccessMiddleware(accessKeys));
+// HLL Social (HLL-Social.exe) starts the server with HLL_EDITION=social: this PC always shows the social edition.
+const SOCIAL_PC = process.env.HLL_EDITION === 'social';
+if (SOCIAL_PC) app.use((req, res, next) => { if (!req.access.remote) req.access.edition = 'social'; next(); });
 app.get('/api/whoami', (req, res) => res.json(req.access));
 // Overlays are loaded by OBS / vMix from other machines too: allow cross-origin reads.
 // Never for remote-access management: another web page must not read the access keys.
 const LOCAL_HOSTS = () => new Set(['localhost', '127.0.0.1', '[::1]', ...Object.values(os.networkInterfaces()).flat().filter(Boolean).map((a) => a.family === 'IPv6' ? `[${a.address}]` : a.address)]);
 app.use((req, res, next) => {
-  if (/^\/api\/remote/i.test(req.path)) {
+  if (/^\/api\/(remote|feed)/i.test(req.path)) {
     // DNS rebinding: a foreign host name that points at this PC is refused.
     const host = String(req.hostname || '').toLowerCase();
     if (!LOCAL_HOSTS().has(host) && !LOCAL_HOSTS().has(`[${host}]`)) return res.status(403).json({ error: 'Remote access management is local only.' });
@@ -106,7 +112,12 @@ app.get('/api/obs-link', (req, res) => {
   res.json(obsLinkFor(req.access, remoteState()));
 });
 app.put('/api/remote', wrap(req => setRemoteEnabled(req.body?.enabled)));
-app.post('/api/remote/rotate', wrap(req => rotateKey(req.body?.role)));
+app.post('/api/remote/rotate', wrap(async req => {
+  const state = rotateKey(req.body?.role);
+  // The online address must learn the new Social PC key, or the old link keeps working.
+  if (req.body?.role === 'feed') await feedPublisher.publishKey().catch(error => console.error('[feed] key', error.message));
+  return state;
+}));
 
 function publicState(access = { role: 'local' }) {
   const d = resolvedTournament(store.get());
@@ -133,6 +144,7 @@ function withoutSecrets(settings) {
 }
 
 function photocraftStatus() {
+  if (SOCIAL_PC) return { available: false };
   try { photocraftExecutable(); return { available: true }; }
   catch { return { available: false }; }
 }
@@ -458,6 +470,12 @@ app.post('/api/render', wrap(async (req) => {
   if (!SCENES.includes(scene)) throw fail(400, 'unknown scene');
   return renderScene(scene, params, name);
 }));
+// Animated version of one graphic (MP4). Runs as a job: a video takes from a few seconds to a minute.
+app.post('/api/render/video', wrap(req => {
+  const { scene, params = {}, name, seconds = 'auto' } = req.body ?? {};
+  if (typeof scene !== 'string' || !SCENES.includes(scene)) throw fail(400, 'Choose a graphic');
+  return startJob('video', job => renderVideo(scene, { ...params }, name, { seconds }, job));
+}));
 app.post('/api/render/all', wrap(() => startJob('render', (job) => renderAll(job, nextMatch()?.id))));
 
 // ---------- Server-Sent Events ----------
@@ -477,6 +495,17 @@ store.onChange((rev) => {
 // Data sync between PCs (data/ is a private git repository; see server/data-sync.js).
 startDataSync(store, (s) => broadcast('sync', s), () => broadcast('state', { rev: store.get().rev }));
 app.get('/api/sync', wrap(() => syncState()));
+// Social PC copy (see server/feed.js), managed only at this PC (local requests, see the access middleware).
+// Broadcaster: publish a copy to the online address. Social PC: get it when the operator asks.
+// After an update the Google Sheet of each tournament is read again, so its newest results win.
+const feedPublisher = createFeedPublisher({ store, cloudConfig });
+const feedClient = createFeedClient({ store, onState: s => broadcast('feed', s), onImported: () => void sheetSync.poll() });
+app.get('/api/feed/publish', wrap(() => ({ ...feedPublisher.state(), all: store.tournaments().map(t => ({ id: t.id, name: t.name, teams: t.teams, matches: t.matches })) })));
+app.post('/api/feed/publish', wrap(req => startJob('publish', job => feedPublisher.publish(req.body?.tournaments, job))));
+app.get('/api/feed/client', wrap(() => feedClient.state()));
+app.put('/api/feed/client', wrap(req => feedClient.connect(req.body?.link)));
+app.post('/api/feed/client/update', wrap(() => feedClient.update()));
+app.delete('/api/feed/client', wrap(() => feedClient.disconnect()));
 app.post('/api/sync/now', wrap(() => syncNow(store)));
 app.get('/api/live/stream', (req, res) => {
   startLiveStream(res);
@@ -510,17 +539,19 @@ app.get('/api/netinfo', wrap(() => {
   return { addresses, port: PORT };
 }));
 
-// The PNG files in the output folder, newest first.
+// The PNG and MP4 files in the output folder, newest first.
 app.get('/api/output', wrap(async () => {
   const dir = store.get().settings.outputDir;
   if (!fs.existsSync(dir)) return [];
   const index = readIndex(dir);
-  const files = await Promise.all(fs.readdirSync(dir).filter((f) => /\.png$/i.test(f)).map(async (name) => {
+  const files = await Promise.all(fs.readdirSync(dir).filter((f) => /\.(png|mp4)$/i.test(f) && !f.startsWith('.')).map(async (name) => {
     const file = path.join(dir, name);
     const mtime = fs.statSync(file).mtimeMs;
     let width, height;
-    try { ({ width, height } = await sharp(file).metadata()); } catch { /* file is still being written */ }
-    return { name, file, width, height, scene: index[name]?.scene || guessScene(name), url: `/output/${encodeURIComponent(name)}?v=${Math.round(mtime).toString(36)}`, mtime };
+    const video = /\.mp4$/i.test(name);
+    if (video) { try { ({ width, height } = dimensionsFor(index[name]?.scene, index[name]?.params ?? {})); } catch { /* unknown scene */ } }
+    else try { ({ width, height } = await sharp(file).metadata()); } catch { /* file is still being written */ }
+    return { name, file, width, height, video, scene: index[name]?.scene || guessScene(name), url: `/output/${encodeURIComponent(name)}?v=${Math.round(mtime).toString(36)}`, mtime };
   }));
   return files.sort((a, b) => b.mtime - a.mtime);
 }));
@@ -535,6 +566,7 @@ app.use((err, req, res, next) => {
 
 // ---------- start ----------
 setPort(PORT);
+setVideoPort(PORT);
 const server = app.listen(PORT, () => {
   console.log(`HLL graphics: control panel http://localhost:${PORT}/  ·  live overlay http://localhost:${PORT}/overlay/live.html`);
   if (process.env.HLL_TEST !== '1') refreshDdragon().catch(() => {});

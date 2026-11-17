@@ -7,6 +7,7 @@ import { store } from '../store.js';
 import { sectionHead, panel, copyField, ctlToggle, toast, toastError, confirmDialog, btn } from '../ui.js';
 import { quickCards, sceneUrl } from '../scenes.js';
 import { MASTER_URL } from '../../../shared/scenes.js';
+import { publishPanel } from '../feed-panel.js';
 
 export const id = 'help';
 let els = null;
@@ -74,7 +75,7 @@ export function mount(root) {
   root.append(sectionHead(t('help.title'), t('help.sub')),
     h('div.help-grid',
       h('div.col', livePanel, h('div.two-up', obs, vmix), scenePanel),
-      h('div.col', vmixData, onlineCard(), lan, staticPanel)));
+      h('div.col', vmixData, onlineCard(), publishPanel(), lan, staticPanel)));
   els = { liveField, sceneList, lanList, lanOther, firewall };
   update(store.state);
   loadNet();
@@ -85,7 +86,7 @@ function onlineCard() {
   const toggle = ctlToggle({ label: t('remote.enabled') });
   const status = h('p.panel-sub', { role: 'status', 'aria-live': 'polite' }, t('common.loading'));
   const rows = new Map();
-  const list = h('div.form-stack', ['full', 'social', 'overlay'].map(role => {
+  const list = h('div.form-stack', ['full', 'social', 'overlay', 'feed'].map(role => {
     const link = copyField('');
     const rotate = btn(t('remote.newLink'), { size: 'sm', onclick: async () => {
       if (!await confirmDialog({ title: t('remote.rotateTitle'), body: t('remote.rotateBody'), ok: t('remote.newLink') })) return;

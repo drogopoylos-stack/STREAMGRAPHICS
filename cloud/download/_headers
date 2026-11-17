@@ -2,6 +2,10 @@
   Cache-Control: no-cache, max-age=0, must-revalidate
   Content-Type: application/octet-stream
   Content-Disposition: attachment; filename="HLL-Broadcast.exe"
+/HLL-Social.exe
+  Cache-Control: no-cache, max-age=0, must-revalidate
+  Content-Type: application/octet-stream
+  Content-Disposition: attachment; filename="HLL-Social.exe"
 /version.json
   Cache-Control: no-store
 /*

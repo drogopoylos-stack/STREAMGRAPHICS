@@ -83,7 +83,7 @@ export function subscribeLive({ onLive, onState, onEvent, onConnection, pollMs =
     try {
       const es = new runtime.EventSource('/api/live/stream');
       source = es;
-      for (const type of ['live', 'state', 'sync', 'remote', 'ping']) {
+      for (const type of ['live', 'state', 'sync', 'remote', 'feed', 'ping']) {
         es.addEventListener(type, event => { if (es === source) delivered(type, event); });
       }
       es.onerror = () => {

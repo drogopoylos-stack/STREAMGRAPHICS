@@ -18,10 +18,11 @@ import * as graphics from './sections/graphics.js';
 import * as settings from './sections/settings.js';
 import * as help from './sections/help.js';
 import * as designer from './sections/designer.js';
+import * as assets from './sections/assets.js';
 import * as wizard from './wizard.js';
 import { createTournamentControls } from './tournaments.js';
 
-const SECTIONS = [live, teams, players, matches, matchups, sponsors, importer, graphics, settings, help, designer];
+const SECTIONS = [live, teams, players, matches, matchups, sponsors, importer, graphics, settings, help, designer, assets];
 const byId = new Map([...SECTIONS, wizard].map((s) => [s.id, s]));
 const pages = new Map(); // id → { el, mounted, stale }
 let current = null;
@@ -29,7 +30,9 @@ let navEls = new Map();
 let hdr = null;
 let loadedTournamentId = null;
 let tournamentChanging = false;
-const SOCIAL_SECTIONS = new Set(['teams', 'players', 'matches', 'graphics', 'designer', 'help']);
+// HLL Social: Assets (teams, players, sources), matches, export and the designer. No OBS / vMix page.
+const SOCIAL_NAV = ['assets', 'matches', 'graphics', 'designer'];
+const SOCIAL_SECTIONS = new Set(SOCIAL_NAV);
 const isSocial = () => store.access?.edition === 'social';
 
 /* ------------------------------------------------------------- boot */
@@ -97,6 +100,7 @@ function goto(id, opts = null) {
 }
 
 function show(id, opts) {
+  if (isSocial() && (id === 'teams' || id === 'players')) { opts = { ...opts, tab: id }; id = 'assets'; }
   if (isSocial() && !SOCIAL_SECTIONS.has(id)) { id = 'graphics'; opts = null; }
   const sec = byId.get(id);
   let page = pages.get(id);
@@ -280,12 +284,12 @@ function buildNav() {
   const items = SECTIONS.map((sec, i) => {
     const n = i === 9 ? 0 : i < 9 ? i + 1 : null;
     const a = h('a.nav-item', { href: `#/${sec.id}`, id: `nav-${sec.id}`, title: `${t(`nav.${sec.id}`)}${n != null ? ` (${t('nav.shortcut', { n })})` : ''}` },
-      icon(sec.id === 'designer' ? 'layers' : sec.id, 18), h('span.nav-label', t(`nav.${sec.id}`)), h('span.nav-badge', { hidden: true }), n != null ? h('kbd.nav-kbd', String(n)) : null);
+      icon({ designer: 'layers', assets: 'folder' }[sec.id] ?? sec.id, 18), h('span.nav-label', t(`nav.${sec.id}`)), h('span.nav-badge', { hidden: true }), n != null ? h('kbd.nav-kbd', String(n)) : null);
     navEls.set(sec.id, a);
     return a;
   });
   setKids(nav, isSocial()
-    ? h('div.nav-list', items.filter((_, i) => SOCIAL_SECTIONS.has(SECTIONS[i].id)))
+    ? h('div.nav-list', SOCIAL_NAV.map(id => navEls.get(id)))
     : h('div.nav-list', items.slice(0, 1), h('div.nav-sep'), items.slice(1, 6), h('div.nav-sep'), items.slice(6, 8), items[10], items.slice(8, 10)));
 }
 

@@ -15,7 +15,7 @@ import { accessPath, roleAllows, resolveRole, createAccessMiddleware, ROLES } fr
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const KEYS = { full: 'review-full-key', social: 'review-social-key', overlay: 'review-overlay-key' };
+const KEYS = { full: 'review-full-key', social: 'review-social-key', overlay: 'review-overlay-key', feed: 'review-feed-key' };
 const PUBLISH_SECRET = 'PROBE-PUBLISH-SECRET';
 const REMOTE = { 'x-hll-via': 'worker' };
 const FULL = { ...REMOTE, cookie: `hll_key=${KEYS.full}` };

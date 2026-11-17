@@ -5,7 +5,7 @@ export const W = 1920;
 export const H = 1080;
 export const TZ = 'Europe/Athens';
 
-const RESERVED = new Set(['scene', 'static', 'bg', 'motion', 'mode', 'data', 'designer']);
+const RESERVED = new Set(['scene', 'static', 'bg', 'motion', 'mode', 'data', 'designer', 'capture']);
 
 /** Parse the page query: scene + params + flags (static, bg, mode, data). */
 export function readFlags(search = location.search) {
@@ -18,6 +18,7 @@ export function readFlags(search = location.search) {
     designer: q.get('designer') === '1',
     params,
     static: q.get('static') === '1',
+    capture: q.get('capture') === '1', // video export: animations are held and stepped frame by frame
     bg: q.get('bg') === '0' ? false : q.get('bg') === '1' ? true : null,
     motion: BG_MOTIONS.includes(q.get('motion')) ? q.get('motion') : null,
     mode: mode === 'simple' || mode === 'full' ? mode : null,

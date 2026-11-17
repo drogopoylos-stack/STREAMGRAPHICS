@@ -43,4 +43,7 @@ $arguments += Join-Path $PSScriptRoot 'launcher\HllLauncher.cs'
 if ($LASTEXITCODE -ne 0) { throw "Launcher compilation failed ($LASTEXITCODE)." }
 $size = (Get-Item -LiteralPath $output).Length
 if ($size -ge 1MB) { throw "Launcher exceeds the expected 1 MB budget: $size bytes." }
-Write-Host "Built $output ($size bytes)"
+# The social edition is the same launcher with another name; the launcher reads its own file name.
+$social = Join-Path $dist 'HLL-Social.exe'
+Copy-Item -LiteralPath $output -Destination $social -Force
+Write-Host "Built $output ($size bytes) and $social"

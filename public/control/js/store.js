@@ -91,7 +91,7 @@ export function connectStream() {
     onState: () => store.refresh(),
     onLive: setLive,
     onEvent: (type, detail) => {
-      if (type === 'sync' || type === 'remote') window.dispatchEvent(new CustomEvent(`hll:${type}`, { detail }));
+      if (type === 'sync' || type === 'remote' || type === 'feed') window.dispatchEvent(new CustomEvent(`hll:${type}`, { detail }));
     },
   });
 }

@@ -13,3 +13,4 @@ public/overlay/js/scenes/graphify-out/
 server.err.log
 *.tmp
 tools/
+models/*.exe

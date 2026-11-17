@@ -23,15 +23,19 @@ internal sealed class Options
 {
     public string Home = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HLL-Broadcast");
     public int Port = 4610;
-    public bool Social, NoBrowser, NoShortcuts, Smoke;
+    public bool Social, SocialOnly, NoBrowser, NoShortcuts, Smoke;
     public static Options Parse(string[] args)
     {
         Options o = new Options();
+        // HLL-Social.exe is the same launcher with another name: it installs the social edition only.
+        // Browsers can rename a second download ("HLL-Social (1).exe"), so look for the word only.
+        if (Path.GetFileNameWithoutExtension(Application.ExecutablePath).IndexOf("social",StringComparison.OrdinalIgnoreCase) >= 0) o.Social = o.SocialOnly = true;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
             {
                 case "--social": o.Social = true; break;
+                case "--social-only": o.Social = o.SocialOnly = true; break;
                 case "--home": o.Home = Path.GetFullPath(args[++i]); break;
                 case "--port": o.Port = Int32.Parse(args[++i]); break;
                 case "--no-browser": o.NoBrowser = true; break;
@@ -79,12 +83,12 @@ internal sealed class Launcher : Form
     public Launcher(Options o)
     {
         options = o; home = o.Home; app = Path.Combine(home, "app");
-        Text = "HLL Broadcast"; ClientSize = new Size(450, 145);
+        Text = o.SocialOnly ? "HLL Social" : "HLL Broadcast"; ClientSize = new Size(450, 145);
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 10); BackColor = Color.FromArgb(18,18,19); ForeColor = Color.FromArgb(237,237,238);
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-        step.SetBounds(24, 26, 402, 46); step.Text = "Preparing HLL Broadcast...";
+        step.SetBounds(24, 26, 402, 46); step.Text = "Preparing " + Text + "...";
         progress.SetBounds(24, 89, 402, 18); progress.Style = ProgressBarStyle.Marquee;
         Controls.Add(step); Controls.Add(progress);
         Shown += async delegate { await Launch(false); };
@@ -152,7 +156,7 @@ internal sealed class Launcher : Form
             });
             if (!options.NoShortcuts) MakeShortcuts();
             if (options.Smoke) {
-                File.WriteAllText(Path.Combine(home,"smoke-result.json"), new JavaScriptSerializer().Serialize(new { ok = true, port = options.Port, sha = InstalledSha(), ownedServer = OwnsServer(), notice = notice }));
+                File.WriteAllText(Path.Combine(home,"smoke-result.json"), new JavaScriptSerializer().Serialize(new { ok = true, port = options.Port, sha = InstalledSha(), ownedServer = OwnsServer(), socialOnly = options.SocialOnly, notice = notice }));
                 Quit(); return;
             }
             if (!options.NoBrowser && !manual) OpenPanel(options.Social);
@@ -377,6 +381,8 @@ internal sealed class Launcher : Form
         // Keep this installation independent of a developer's shell settings.
         server.StartInfo.EnvironmentVariables["HLL_DATA_DIR"] = Path.Combine(app,"data");
         server.StartInfo.EnvironmentVariables["HLL_OUTPUT_DIR"] = Path.Combine(app,"output");
+        // HLL Social: the server shows the social edition only and uses the standard photo processing.
+        if (options.SocialOnly) server.StartInfo.EnvironmentVariables["HLL_EDITION"] = "social";
         DataReceivedEventHandler handler = delegate(object sender, DataReceivedEventArgs e) { if(e.Data != null) lock(logLock) { if(serverLog != null) serverLog.WriteLine(e.Data); } };
         server.OutputDataReceived += handler; server.ErrorDataReceived += handler;
         server.Start(); server.BeginOutputReadLine(); server.BeginErrorReadLine();
@@ -403,9 +409,9 @@ internal sealed class Launcher : Form
     void EnsureTray()
     {
         if (tray != null) return;
-        tray = new NotifyIcon(); tray.Icon = Icon; tray.Text = "HLL Broadcast";
+        tray = new NotifyIcon(); tray.Icon = Icon; tray.Text = Text;
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Open HLL Broadcast",null,delegate { OpenPanel(false); });
+        if (!options.SocialOnly) menu.Items.Add("Open HLL Broadcast",null,delegate { OpenPanel(false); });
         menu.Items.Add("Open HLL Social",null,delegate { OpenPanel(true); });
         menu.Items.Add("Check for updates",null,async delegate { await Launch(true); });
         menu.Items.Add(new ToolStripSeparator());
@@ -434,13 +440,13 @@ internal sealed class Launcher : Form
         try {
             foreach (string folder in new [] { Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Environment.GetFolderPath(Environment.SpecialFolder.Programs) }) {
                 Directory.CreateDirectory(folder);
-                foreach (bool social in new [] { false, true }) {
+                foreach (bool social in options.SocialOnly ? new [] { true } : new [] { false, true }) {
                     string name = social ? "HLL Social" : "HLL Broadcast";
                     object link = type.InvokeMember("CreateShortcut",BindingFlags.InvokeMethod,null,shell,new object[] { Path.Combine(folder,name + ".lnk") });
                     try {
                         Type lt = link.GetType();
                         lt.InvokeMember("TargetPath",BindingFlags.SetProperty,null,link,new object[] { exe });
-                        lt.InvokeMember("Arguments",BindingFlags.SetProperty,null,link,new object[] { arguments + (social ? " --social" : "") });
+                        lt.InvokeMember("Arguments",BindingFlags.SetProperty,null,link,new object[] { arguments + (social ? (options.SocialOnly ? " --social-only" : " --social") : "") });
                         lt.InvokeMember("WorkingDirectory",BindingFlags.SetProperty,null,link,new object[] { home });
                         lt.InvokeMember("IconLocation",BindingFlags.SetProperty,null,link,new object[] { exe + ",0" });
                         lt.InvokeMember("Save",BindingFlags.InvokeMethod,null,link,null);

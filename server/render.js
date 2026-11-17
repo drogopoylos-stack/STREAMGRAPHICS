@@ -18,6 +18,7 @@ const CANDIDATES = [
 ].filter(Boolean);
 
 let browserPromise = null;
+export { browser as renderBrowser, safeName };
 let port = 4610;
 export function setPort(p) { port = p; }
 

@@ -192,6 +192,19 @@ export function createStore({ file = FILE, outputRoot = OUTPUT_DEFAULT } = {}) {
     return db.settings.graphicDesign;
   }
   function activeId() { ensure(); return root.activeTournamentId; }
+  /** A copy of the whole database (all tournaments and the design library). */
+  function rootSnapshot() { ensure(); return structuredClone(root); }
+  /** Replace the whole database, for example with a merged copy from the social feed. */
+  function importRoot(next) {
+    if (next?.schemaVersion !== 2 || !Array.isArray(next.tournaments) || !next.tournaments.length || new Set(next.tournaments.map(t => t.id)).size !== next.tournaments.length || !next.tournaments.some(t => t.id === next.activeTournamentId)) throw failure(400, 'The received database is not valid; this PC keeps its data');
+    ensure();
+    const previous = root;
+    root = structuredClone(next);
+    try {
+      for (const record of root.tournaments) record.data = localPaths(normalize(record.data), outputRoot);
+      changed(); saveNow();
+    } catch (error) { clearTimeout(saveTimer); root = previous; throw error; }
+  }
   function saveNow() {
     ensure();
     clearTimeout(saveTimer);
@@ -359,13 +372,13 @@ export function createStore({ file = FILE, outputRoot = OUTPUT_DEFAULT } = {}) {
     saveNow();
     return get();
   }
-  return { load, get, getTournament, saveNow, changed, activeId, tournaments, createTournament, createWizard, regenerateWizard, deleteTournament, updateTournament, activate,
+  return { load, get, getTournament, saveNow, changed, activeId, rootSnapshot, importRoot, tournaments, createTournament, createWizard, regenerateWizard, deleteTournament, updateTournament, activate,
     designLibrary, saveDesignPreset, deleteDesignPreset, setDefaultDesign, applyDesign,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); } };
 }
 
 const store = createStore();
-export const { load, get, getTournament, saveNow, changed, onChange, activeId, tournaments, createTournament, createWizard, regenerateWizard, deleteTournament, updateTournament, activate } = store;
+export const { load, get, getTournament, saveNow, changed, onChange, activeId, rootSnapshot, importRoot, tournaments, createTournament, createWizard, regenerateWizard, deleteTournament, updateTournament, activate } = store;
 export const { designLibrary, saveDesignPreset, deleteDesignPreset, setDefaultDesign, applyDesign } = store;
 
 export const COLLECTIONS = { teams: 't', players: 'p', matches: 'm', sponsors: 's', features: 'f' };

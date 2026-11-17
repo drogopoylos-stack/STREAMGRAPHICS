@@ -63,6 +63,16 @@ export function animateIn(root) {
     });
     anims.push(a.finished.catch(() => null));
   }
+  // Social graphics without their own choreography: the blocks rise in one after the other.
+  // The individual `translate` property animates on top of any layout `transform`, so nothing moves out of place.
+  const body = root.matches?.('.social-sc') ? root.querySelector(':scope > .sx-in') : root.querySelector('.social-sc > .sx-in');
+  if (body && !body.querySelector('[data-in]')) {
+    [...body.children].forEach((el, i) => {
+      const a = el.animate([{ opacity: 0, translate: '0 60px' }, { opacity: 1, translate: '0 0' }],
+        { duration: 700, delay: 250 + i * 160, easing: EASE_OUT, fill: 'backwards' });
+      anims.push(a.finished.catch(() => null));
+    });
+  }
   return Promise.all(anims);
 }
 

@@ -19,6 +19,18 @@ On Windows 11 x64, run `HLL-Broadcast.exe` from the download page. It installs p
 
 Build: `powershell -NoProfile -ExecutionPolicy Bypass -File desktop\build.ps1`. Publish the download page and installer: `powershell -NoProfile -ExecutionPolicy Bypass -File desktop\publish.ps1 -Version 1.0.0` (Cloudflare login required). New program changes reach colleagues after they are pushed to GitHub `main`; republish the site when changing the installer or its download page. Run `desktop\test.ps1` for an isolated first-install smoke test on an unused port.
 
+## Social PC (HLL Social, one-way copy for the social media team)
+
+Install **HLL Social** (`HLL-Social.exe` from the download page) on the social PC. It shows the social edition only: **Assets** (teams, players, sources), **Matches**, **Graphics & export** and the **Graphics designer** with the social screens only. Photos use the standard processing (no PhotoCraft).
+
+1. Broadcaster: **OBS / vMix → Copy for the social PC** → choose the tournaments → **Publish copy**. The copy and its images go to the online address (Cloudflare Worker + KV, `cloud/worker`). The broadcaster PC can be off after that.
+2. Send the **Social PC** link (`…/__hll/feed?key=…`) one time.
+3. Social PC: **Assets → Sources → Copy from the broadcaster** (or Graphics & export) → paste the link → **Connect**.
+
+Updates come only with **Get updates** (after a new **Publish copy**). Nothing goes back to the broadcaster; the Social PC key cannot open the broadcaster PC. A three-way merge keeps the social PC's work: Graphics designer changes, social settings, saved graphics and backgrounds stay; teams, players, matches and sponsors follow the broadcaster. Tournaments that are not in a new copy stay on the social PC. Each tournament keeps its own match source on the social PC (**Assets → Sources**: Google Sheet with automatic sync, HLL.GR) and its Google Drive folder for the original logos and photos. The database before the first update is kept in `data/backups/before-feed-*.json`. See `server/feed.js`.
+
+**Video:** Graphics & export → Single render → File **MP4 video (animated)**. The animation preview shows the same animation. The first video downloads ffmpeg to `models/ffmpeg.exe` (or set `HLL_FFMPEG`). See `server/video.js`.
+
 ## Get the data
 
 Use **Active tournament** in the top bar to choose which tournament you are working on. Open **Tournaments → Add tournament** to create another one, set its name and optional broadcast days, then choose **Switch tournament**. Your existing HLL setup is kept as the first tournament.

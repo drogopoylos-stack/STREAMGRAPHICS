@@ -45,12 +45,14 @@ export function mount(root) {
     hllJob);
 
   // ---- Drive
-  const driveUrl = ctlText({ placeholder: t('import.drivePlaceholder'), type: 'url' });
+  // The folder link is saved per tournament, so the originals can be fetched again later.
+  const driveUrl = ctlText({ value: s.settings.drive?.folderUrl ?? '', placeholder: t('import.drivePlaceholder'), type: 'url' });
   const driveKind = ctlSelect({ options: KIND_OPTS(), value: 'auto' });
   const driveBtn = btn(t('import.importBtn'), { kind: 'primary', iconName: 'import' });
   driveBtn.addEventListener('click', () => busy(driveBtn, async () => {
     const url = driveUrl.get();
     if (!url) { toast(t('import.needUrl'), 'error'); driveUrl.el.focus(); return; }
+    if (url !== store.state.settings.drive?.folderUrl) await api.put('/api/settings', { drive: { folderUrl: url } }).catch(() => {});
     await startImport({ source: 'drive', url, kind: driveKind.get() });
   }));
   const apiKey = ctlText({ value: s.settings.drive?.apiKey ?? '', type: 'password', mono: true });
@@ -102,7 +104,7 @@ export function mount(root) {
     sectionHead(t('import.title'), t('import.sub')),
     h('div.import-grid', h('div.col', hll, rules), h('div.col', drive, local, importPanel)),
     h('section.subsection', unHead, unGrid, unEmpty));
-  els = { hllJob, importJob, importPanel, syncBtn, driveBtn, localBtn, unHead, unGrid, unEmpty, hllSub };
+  els = { hllJob, importJob, importPanel, syncBtn, driveBtn, localBtn, unHead, unGrid, unEmpty, hllSub, driveUrl };
 
   onAnyJob(() => paintJobs());
   paintJobs();
@@ -189,6 +191,7 @@ function unmatchedCard(u) {
 export function update(state) {
   if (!els || !state) return;
   els.hllSub.textContent = t('import.hllgrSub', { url: state.settings.hllgr?.baseUrl ?? 'https://hll.gr' });
+  if (!els.driveUrl.get() && state.settings.drive?.folderUrl) els.driveUrl.set(state.settings.drive.folderUrl);
   const list = state.unmatched ?? [];
   els.unHead.querySelector('.subsection-sub').textContent = list.length ? t('import.unmatchedSub', { n: list.length }) : '';
   els.unEmpty.hidden = list.length > 0;

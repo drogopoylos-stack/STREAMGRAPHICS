@@ -1,5 +1,5 @@
 // Access policy is independent of Express so every role and redirect can be tested.
-export const ROLES = ['full', 'social', 'overlay'];
+export const ROLES = ['full', 'social', 'overlay', 'feed'];
 export function obsLinkFor(access, state) {
   const allowed = access?.remote === false || (access?.remote === true && access.role === 'full');
   return { overlayUrl: allowed && state.enabled ? state.links?.overlay || null : null };
@@ -18,7 +18,9 @@ export function accessPath(url) {
 export function roleAllows(role, rawMethod, pathname, body) {
   const method = String(rawMethod || '').toUpperCase();
   const p = accessPath(pathname);
-  if (!p || p.startsWith('/api/remote')) return false;
+  // Remote access and the Social PC copy are managed only at this PC. The Social PC key is read by
+  // the online address (Cloudflare Worker), never by this PC.
+  if (!p || p.startsWith('/api/remote') || p.startsWith('/api/feed') || role === 'feed') return false;
   if (role === 'full') return true;
   if (role === 'social') {
     if (p.startsWith('/api/sync')) return false;
@@ -44,7 +46,7 @@ export function createAccessMiddleware(getKeys) {
     res.set('Cache-Control', 'no-store');
     res.set('Referrer-Policy', 'no-referrer');
     const p = accessPath(req.originalUrl);
-    if (!p || p.startsWith('/api/remote')) return res.status(403).json({ error: 'Remote access management is local only.' });
+    if (!p || p.startsWith('/api/remote') || p.startsWith('/api/feed')) return res.status(403).json({ error: 'Remote access management is local only.' });
     const url = new URL(req.originalUrl, 'http://local');
     const keys = getKeys();
     const queryRole = resolveRole(url.searchParams.get('key'), keys);

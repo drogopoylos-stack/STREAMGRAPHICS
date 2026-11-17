@@ -124,7 +124,8 @@ function cutoutFile(id) { return path.join(RAW, 'cutouts', `${id}.png`); }
 /** Step 1 for one player: cut out and measure. Saves the cut-out and photoStats on the player. */
 async function preparePlayer(p, settings) {
   if (!p.photoRaw || !fs.existsSync(p.photoRaw)) return false;
-  const engine = p.photoProcessor && p.photoProcessor !== 'inherit' ? p.photoProcessor : settings.photo.engine;
+  // HLL Social uses the standard processing only (no PhotoCraft agent).
+  const engine = process.env.HLL_EDITION === 'social' ? 'standard' : p.photoProcessor && p.photoProcessor !== 'inherit' ? p.photoProcessor : settings.photo.engine;
   const { data, info, removed } = await cutout(p.photoRaw, settings.photo.removeBg, engine);
   fs.mkdirSync(path.dirname(cutoutFile(p.id)), { recursive: true });
   await raw(data, info).png().toFile(cutoutFile(p.id));
@@ -140,7 +141,7 @@ async function finishPlayer(p, settings, look) {
   if (!fs.existsSync(file)) return false;
   let { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const ph = settings.photo;
-  const engine = p.photoProcessor && p.photoProcessor !== 'inherit' ? p.photoProcessor : ph.engine;
+  const engine = process.env.HLL_EDITION === 'social' ? 'standard' : p.photoProcessor && p.photoProcessor !== 'inherit' ? p.photoProcessor : ph.engine;
   if (ph.harmonize && look && p.photoStats?.mean && !p.noHarmonize) {
     if (engine === 'photocraft') {
       const corrected = await editPhoto(await raw(data, info).png().toBuffer(), { correctColor: true, strength: ph.strength ?? 0.7 });

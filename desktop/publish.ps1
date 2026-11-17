@@ -4,7 +4,9 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 & (Join-Path $PSScriptRoot 'build.ps1')
 $site = Join-Path $repo 'cloud\download'
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'dist\HLL-Broadcast.exe') -Destination (Join-Path $site 'HLL-Broadcast.exe') -Force
+foreach ($exe in 'HLL-Broadcast.exe', 'HLL-Social.exe') {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "dist\$exe") -Destination (Join-Path $site $exe) -Force
+}
 $sha = & git -C $repo rev-parse HEAD
 if ($LASTEXITCODE -ne 0) { throw 'Could not read the local Git revision.' }
 $release = [ordered]@{ version = $Version; date = [DateTime]::UtcNow.ToString('yyyy-MM-dd'); sha = $sha.Trim() }

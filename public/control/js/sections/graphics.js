@@ -4,11 +4,12 @@ import { icon } from '../icons.js';
 import { t, fmtStamp } from '../strings.js';
 import { api } from '../api.js';
 import { store } from '../store.js';
-import { trackJob, latestJob, onAnyJob, getJob } from '../jobs.js';
-import { toast, toastError, busy, btn, sectionHead, panel, field, ctlText, copyField, jobView, imgBox, emptyState, badge } from '../ui.js';
+import { trackJob, latestJob, onAnyJob, getJob, watchJob } from '../jobs.js';
+import { toast, toastError, busy, btn, sectionHead, panel, field, ctlText, ctlSelect, ctlSegmented, copyField, jobView, imgBox, emptyState, badge } from '../ui.js';
 import { sceneBuilder } from '../builder.js';
 import { cueText, sceneUrl, sceneName } from '../scenes.js';
 import { backgroundPanel } from '../background-panel.js';
+import { feedPanel } from '../feed-panel.js';
 import { filterMenu, applyFacets } from '../filter-menu.js';
 import { guessScene } from '../../../shared/output-types.js';
 import { dimensionsFor, isPortrait, SCENE_DEFINITIONS } from '../../../shared/scenes.js';
@@ -58,11 +59,39 @@ export function mount(root) {
     if (previewFrame.getAttribute('src') !== url) previewFrame.src = url;
     fitPreview();
   };
-  const builder = sceneBuilder({ onChange: paintPreview, sceneFilter: scene => !social || scene.startsWith('social-') });
+  // Animation preview: the same graphic with its animations, as in the MP4 video (Replay starts it again).
+  const animFrame = h('iframe.export-preview-frame', { title: t('graphics.animTitle'), scrolling: 'no' });
+  const animBox = h('div.export-preview.checker', animFrame);
+  let animSize = { width: 1920, height: 1080 };
+  const fitAnim = () => animBox.style.setProperty('--preview-scale', String(animBox.clientWidth / animSize.width));
+  const paintAnim = cue => {
+    animSize = dimensionsFor(cue.scene, cue.params);
+    animBox.style.aspectRatio = `${animSize.width} / ${animSize.height}`;
+    animBox.classList.toggle('is-portrait', isPortrait(cue.scene, cue.params));
+    animFrame.style.width = `${animSize.width}px`;
+    animFrame.style.height = `${animSize.height}px`;
+    const url = sceneUrl(cue.scene, cue.params);
+    if (animFrame.getAttribute('src') !== url) animFrame.src = url;
+    fitAnim();
+  };
+  const replayBtn = btn(t('graphics.animReplay'), { size: 'sm', iconName: 'play', onclick: () => { try { animFrame.contentWindow.location.reload(); } catch { animFrame.src = animFrame.getAttribute('src'); } } });
+  const animPanel = panel(t('graphics.animTitle'), h('p.panel-sub', t('graphics.animSub')), animBox, h('div.panel-actions', replayBtn));
+  new ResizeObserver(fitAnim).observe(animBox);
+  const builder = sceneBuilder({ onChange: cue => { paintPreview(cue); paintAnim(cue); }, sceneFilter: scene => !social || scene.startsWith('social-') });
   builder.set({ scene: social ? 'social-schedule' : 'schedule', params: { day: 'today' } });
   new ResizeObserver(fitPreview).observe(preview);
   const name = ctlText({ placeholder: t('graphics.fileNameHint'), mono: true });
+  // PNG (still) or MP4 (animated, for videos on Instagram / TikTok).
+  const outType = ctlSegmented({ options: [{ value: 'png', label: t('graphics.typePng') }, { value: 'mp4', label: t('graphics.typeMp4') }], value: 'png', size: 'sm' });
+  const seconds = ctlSelect({ value: 'auto', options: [{ value: 'auto', label: t('graphics.lengthAuto') }, ...[5, 8, 10, 15].map(n => ({ value: String(n), label: t('graphics.lengthN', { n }) }))] });
+  const secondsField = field(t('graphics.length'), seconds, { hint: t('graphics.lengthHint') });
+  secondsField.hidden = true;
   const renderBtn = btn(t('graphics.render'), { kind: 'primary', iconName: 'image' });
+  outType.el.addEventListener('change', () => {
+    const video = outType.get() === 'mp4';
+    secondsField.hidden = !video;
+    renderBtn.querySelector('span:last-child').textContent = t(video ? 'graphics.renderVideo' : 'graphics.render');
+  });
   const singleOut = h('div.grid.grid-renders');
   const saveBtn = btn(t('live.saveGraphic'), { iconName: 'plus' });
   saveBtn.hidden = social;
@@ -75,6 +104,22 @@ export function mount(root) {
     const cue = builder.get();
     const body = { scene: cue.scene, params: cue.params };
     if (name.get()) body.name = cue.params?.format ? `${name.get()}-${cue.params.format}` : name.get();
+    if (outType.get() === 'mp4') {
+      try {
+        const job = trackJob(await api.post('/api/render/video', { ...body, seconds: seconds.get() }));
+        setKids(singleOut, jobView(job.id, { compact: true }));
+        const stop = watchJob(job.id, current => {
+          if (current.status === 'running') return;
+          stop();
+          if (current.status !== 'done' || !current.result) { toastError(new Error(current.message || t('graphics.videoFailed'))); return; }
+          fresh.add(baseName(current.result));
+          setKids(singleOut, renderCard({ ...current.result, label: cueText(cue.scene, cue.params), mtime: Date.now() }, { lazy: false }));
+          toast(t('live.exported', { name: baseName(current.result) }), 'ok');
+          loadFiles();
+        });
+      } catch (e) { toastError(e); }
+      return;
+    }
     try {
       const r = await api.post('/api/render', body);
       fresh.add(baseName(r));
@@ -84,7 +129,7 @@ export function mount(root) {
     } catch (e) { toastError(e); }
   }));
   const singlePanel = panel(t('graphics.single'), h('p.panel-sub', t('graphics.singleSub')),
-    builder.el, preview, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut);
+    builder.el, preview, field(t('graphics.output'), outType), secondsField, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut);
   const backgrounds = backgroundPanel({ socialOnly: social });
 
   // Every PNG in the output folder (also renders from earlier sessions), with the menu of the Live page.
@@ -102,10 +147,11 @@ export function mount(root) {
     filesMenu.el, filesMsg, filesGrid, filesMore);
 
   root.append(sectionHead(t('graphics.title'), t(social ? 'remote.socialGraphicsSub' : 'graphics.sub')),
-    h('div.graphics-grid', h('div.col', allPanel, backgrounds.el, outPanel), h('div.col', singlePanel)),
+    h('div.graphics-grid', h('div.col', social ? feedPanel() : null, allPanel, animPanel, backgrounds.el, outPanel), h('div.col', singlePanel)),
     filesPanel);
-  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, filesMenu, filesMore, backgrounds, paintPreview };
+  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, filesMenu, filesMore, backgrounds, paintPreview, paintAnim };
   paintPreview(builder.get());
+  paintAnim(builder.get());
   onAnyJob(() => paintJob());
   window.addEventListener('hll:output', (e) => { if (e.detail) fresh.add(baseName(e.detail)); loadFiles(); });
   paintJob();
@@ -182,11 +228,16 @@ function fileWhen(mtime) {
 
 function renderCard(r, { lazy = true, role } = {}) {
   const nm = baseName(r);
-  const downloadBtn = h('a.btn.btn-sm.btn-ghost', { href: r.url, download: nm }, icon('image', 14), h('span', t('graphics.downloadPng')));
+  const video = r.video || /\.mp4$/i.test(nm);
+  const downloadBtn = h('a.btn.btn-sm.btn-ghost', { href: r.url, download: nm }, icon(video ? 'play' : 'image', 14), h('span', t(video ? 'graphics.downloadMp4' : 'graphics.downloadPng')));
+  const ratio = r.width && r.height ? `${r.width} / ${r.height}` : '16 / 9';
+  const thumb = video
+    ? h('div.render-thumb', h('video.render-video', { src: `${r.url}#t=3`, muted: true, loop: true, playsinline: true, controls: true, preload: 'metadata', style: { aspectRatio: ratio } }))
+    : h('a.render-thumb', { href: r.url, target: '_blank', rel: 'noopener', title: t('graphics.openPng') }, imgBox(r.url, { ratio, lazy }));
   const copyBtn = h('button.btn.btn-sm.btn-ghost', { type: 'button', title: r.file }, icon('copy', 14), h('span', t('graphics.copyPath')));
   copyBtn.addEventListener('click', async () => { if (await copyText(r.file)) toast(t('common.copied'), 'ok', { timeout: 1200 }); });
   return h('article.render-card', role ? { role } : {},
-    h('a.render-thumb', { href: r.url, target: '_blank', rel: 'noopener', title: t('graphics.openPng') }, imgBox(r.url, { ratio: r.width && r.height ? `${r.width} / ${r.height}` : '16 / 9', lazy })),
+    thumb,
     h('div.render-body',
       h('div.render-name', { title: nm }, nm),
       h('div.render-sub',
@@ -224,5 +275,6 @@ export function update(state) {
   els.builder.refresh(state);
   els.backgrounds.update(state);
   els.paintPreview(els.builder.get());
+  els.paintAnim(els.builder.get());
   paintJob();
 }

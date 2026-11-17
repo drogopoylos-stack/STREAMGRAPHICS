@@ -20,6 +20,9 @@ const STORAGE = 'hll-graphics-designer-draft-v1';
 const TABS = ['fonts', 'text', 'layout', 'icons', 'background', 'assets', 'presets'];
 let els, library, config, selectedId, presetName, baseline, tab = 'fonts', scene = 'waiting', params = {}, format = 'story', focusSlot = '', previewData, frameReady = false, previewSeq = 0;
 const isSocial = (id) => sceneDefinition(id)?.group === 'social';
+// HLL Social: the designer shows the social posts and stories only.
+const socialEdition = () => store.access?.edition === 'social';
+const screens = () => socialEdition() ? SCENE_DEFINITIONS.filter(s => isSocial(s.id)) : SCENE_DEFINITIONS;
 let layoutElements = [], layoutSelection = null, history = { past: [], future: [] }, checkpoint, playMotion = false, textEditing = false, pendingAction = null, toolbarTimer, popover = null, pointerDown = false, previewBusy = false, lastCoalesce = { name: '', at: 0 };
 const fontOptions = (label = 'Original font') => [{ value: '', label }, ...DESIGN_FONTS.map(f => ({ value: f.id, label: f.name }))];
 const fontCss = value => DESIGN_FONTS.find(f => f.id === value)?.css || '"Fira Sans Extra Condensed",sans-serif';
@@ -57,8 +60,9 @@ export function mount(root) {
     const draft = JSON.parse(localStorage.getItem(STORAGE));
     if (draft?.config) { config = normalizeDesign(draft.config); selectedId = draft.selectedId; presetName = String(draft.presetName || 'My broadcast').slice(0, 80); baseline = draft.baseline || snapshot(); if (sceneDefinition(draft.scene)) scene = draft.scene; if (TABS.includes(draft.tab)) tab = draft.tab; }
   } catch { /* Ignore an obsolete draft schema. */ }
+  if (socialEdition() && !isSocial(scene)) scene = screens()[0].id;
   checkpoint = structuredClone(config); history = { past: [], future: [] }; playMotion = tab === 'background' && !reducedMotion();
-  const sceneSelect = ctlSelect({ options: SCENE_DEFINITIONS.map(s => ({ value: s.id, label: s.label })), value: scene });
+  const sceneSelect = ctlSelect({ options: screens().map(s => ({ value: s.id, label: s.label })), value: scene });
   sceneSelect.el.setAttribute('aria-label', 'Preview screen');
   sceneSelect.el.addEventListener('change', () => finishEdit(() => { closePopover(); scene = sceneSelect.get(); focusSlot = ''; format = 'story'; params = {}; clearLayoutState(); setTargetOptions(); frameReady = false; previewData = null; navigateFrame(); paintTab(); persist(); queuePreview(); }));
   const target = ctlSelect(); target.el.setAttribute('aria-label', 'Preview data');
@@ -371,7 +375,7 @@ function iconsPanel() {
     type: 'button', role: 'radio', 'aria-checked': String(config.assets.icons === set.id),
     onclick: () => { config.assets.icons = set.id; cleanIconPicks(); changed('Icon ? All icons'); paintTab(); },
   }, h('strong', {}, set.name), h('span.icon-set-hint', set.hint), h('div.icon-set-row', ICON_SLOTS.map(slot => iconGlyph(set.id, slot.id, slot.label))))));
-  const see = h('div.icon-see', ['roster', 'versus', 'bracket'].map(id => btn(`Show ${sceneDefinition(id).label}`, { size: 'sm', onclick: () => showScene(id) })));
+  const see = h('div.icon-see', (socialEdition() ? ['social-roster', 'social-versus', 'social-bracket'] : ['roster', 'versus', 'bracket']).map(id => btn(`Show ${sceneDefinition(id).label}`, { size: 'sm', onclick: () => showScene(id) })));
   const tint = ctlToggle({ value: config.assets.iconTint, label: 'Use the theme colour', hint: 'For one-colour icons. Off keeps the colours of your files. The tournament emblem always keeps its colours.' });
   tint.el.addEventListener('change', () => { config.assets.iconTint = tint.get(); changed('Icon ? Theme colour'); });
   const rows = ICON_SLOTS.map(slot => {
@@ -500,14 +504,14 @@ function backgroundPanel() {
     };
     const levels = h('div.design-field-pair', select('speed', BG_SPEEDS), select('intensity', BG_INTENSITIES)); levels.hidden = value.motion === 'none';
     return h('div', show.el, h('p.field-hint', 'Off makes the graphic transparent, ready to place over gameplay or a camera. Any URL with bg=0 is always transparent.'), motions,
-      h('p.field-hint', 'Motion plays in OBS and on live.html. PNG exports show a still frame.'), levels);
+      h('p.field-hint', socialEdition() ? 'Motion plays in the MP4 video export and in the animation preview. PNG exports show a still frame.' : 'Motion plays in OBS and on live.html. PNG exports show a still frame.'), levels);
   };
   const custom = !!config.backgrounds.screens[scene];
   const mode = h('div.design-actions', ['Same as all screens', 'Custom for this screen'].map((label, i) => h('label.design-radio', h('input', { type: 'radio', name: 'background-scope', checked: custom === !!i, onchange: () => {
     if (i) config.backgrounds.screens[scene] = { ...bg }; else delete config.backgrounds.screens[scene];
     changed('Background · Screen override'); paintTab();
   } }), label)));
-  const rows = SCENE_DEFINITIONS.map(def => {
+  const rows = screens().map(def => {
     const value = resolveBackground(config, def.id);
     return h('div.design-background-row', btn(def.label, { size: 'sm', onclick: () => showScene(def.id) }), h('span.field-hint', !value.show ? 'Off' : `${config.backgrounds.screens[def.id] ? 'Custom' : 'Default'} · ${titleCase(value.motion)}`),
       !value.show ? btn('Show', { size: 'sm', onclick: () => { config.backgrounds.screens[def.id] = { ...config.backgrounds.screens[def.id], show: true }; config = normalizeDesign(config); changed('Background · Show'); paintTab(); } }) : null);

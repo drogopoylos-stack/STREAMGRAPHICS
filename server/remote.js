@@ -39,7 +39,7 @@ export function createRemoteManager({ file = path.join(DATA, 'remote.json'), fet
     const c = readConfig();
     const publicUrl = typeof c.workerUrl === 'string' ? c.workerUrl.replace(/\/+$/, '') : '';
     return { enabled: c.enabled, ...state, publicUrl, links: Object.fromEntries(ROLES.map(role =>
-      [role, publicUrl ? `${publicUrl}${role === 'overlay' ? '/overlay/master.html' : '/control/'}?key=${encodeURIComponent(c.keys[role])}` : ''])) };
+      [role, publicUrl ? `${publicUrl}${{ overlay: '/overlay/master.html', feed: '/__hll/feed' }[role] ?? '/control/'}?key=${encodeURIComponent(c.keys[role])}` : ''])) };
   }
   function set(update) { state = { ...state, ...update }; notify(remoteState()); }
   function publish(url) {
@@ -167,8 +167,10 @@ export function createRemoteManager({ file = path.join(DATA, 'remote.json'), fet
     notify(remoteState());
     return remoteState();
   }
-  return { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, accessKeys: () => ({ ...readConfig().keys }) };
+  /** The fixed online address and its publish secret (the Social PC copy is stored there). */
+  const cloudConfig = () => { const c = readConfig(); return { workerUrl: typeof c.workerUrl === 'string' ? c.workerUrl.replace(/\/+$/, '') : '', publishSecret: c.publishSecret || '', feedKey: c.keys.feed }; };
+  return { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, cloudConfig, accessKeys: () => ({ ...readConfig().keys }) };
 }
 
 const manager = createRemoteManager();
-export const { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, accessKeys } = manager;
+export const { startRemote, stopRemote, setRemoteEnabled, rotateKey, remoteState, cloudConfig, accessKeys } = manager;

@@ -180,7 +180,8 @@ export async function edit(playerId) {
     h('div.block-head', h('h3.block-title', t('players.photo')), isNew ? null : reBtn),
     h('div.photo-row', photo,
       isNew ? null : h('div.photo-side', noHarm.el, p?.bgRemoved ? h('p.field-hint', icon('check', 12), ' ', t('players.bgRemoved')) : null, jobHost)),
-    isNew ? null : h('div.form-stack', field(t('players.processor'), processor, { hint: t('players.processorHint') }), h('div.inline-row', applyProcessor)),
+    // HLL Social uses the standard photo processing only (no PhotoCraft agent).
+    isNew || store.access?.edition === 'social' ? null : h('div.form-stack', field(t('players.processor'), processor, { hint: t('players.processorHint') }), h('div.inline-row', applyProcessor)),
     h('p.field-hint', t('players.photoHint')));
 
   const body = h('div.form-stack',

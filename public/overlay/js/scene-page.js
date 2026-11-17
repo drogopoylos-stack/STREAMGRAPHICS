@@ -77,6 +77,16 @@ if (flags.designer && parent !== window) {
     } catch (error) { next?.remove(); parent.postMessage({ type: 'graphic-design-error', message: error.message }, location.origin); }
   });
   parent.postMessage({ type: 'graphic-design-ready' }, location.origin);
+} else if (flags.capture) {
+  // Video export (server/video.js): build the scene with its entrance animation, then hold every
+  // animation at its first frame. The exporter moves them with __seek(ms) and takes one frame each step.
+  await show(true);
+  const anims = document.getAnimations();
+  for (const a of anims) a.pause();
+  const start = anims.map(a => Number(a.currentTime) || 0);
+  window.__introMs = Math.max(0, ...anims.map(a => a.effect?.getComputedTiming().endTime).filter(Number.isFinite));
+  window.__seek = ms => anims.forEach((a, i) => { a.currentTime = start[i] + ms; });
+  markReady();
 } else if (flags.static) {
   // PNG renderer: final frame at once, then signal readiness (with a failsafe so the renderer never hangs).
   const failsafe = sleep(17000);
