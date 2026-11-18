@@ -36,7 +36,7 @@ if (Test-Path -LiteralPath $source) {
 $output = Join-Path $dist 'HLL-Broadcast.exe'
 $arguments = @('/nologo', '/target:winexe', '/platform:x64', '/optimize+', '/utf8output', "/out:$output",
     '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll', '/reference:System.Web.Extensions.dll',
-    '/reference:System.IO.Compression.dll', '/reference:System.IO.Compression.FileSystem.dll')
+    '/reference:System.IO.Compression.dll', '/reference:System.IO.Compression.FileSystem.dll', '/reference:System.Management.dll')
 if (Test-Path -LiteralPath $icon) { $arguments += "/win32icon:$icon" }
 $arguments += Join-Path $PSScriptRoot 'launcher\HllLauncher.cs'
 & $compiler @arguments

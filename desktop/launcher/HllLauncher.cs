@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
+using System.Management;
 using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -192,6 +193,8 @@ internal sealed class Launcher : Form
             if (!File.Exists(Path.Combine(app,"server","index.js"))) throw new Exception("The program could not be downloaded. Connect to the internet and open HLL Broadcast again.", e);
             notice = manual ? "Could not check for updates. The installed version is running." : null;
         }
+        // An older server of this installation (for example the full HLL Broadcast in the tray) blocks the update.
+        if (external && sha != null && sha != InstalledSha() && StopInstalledServer()) { external = false; RecoverUpdate(); }
         if (external) {
             if (sha != null && sha != InstalledSha()) notice = "HLL is already running in another process. Quit that HLL server, then open this shortcut again to install the update.";
             else if (manual) notice = "HLL is already running. Use its tray icon to check for updates.";
@@ -364,6 +367,37 @@ internal sealed class Launcher : Form
             object data; if (json.TryGetValue("data",out data) && data is Dictionary<string,object>) json = (Dictionary<string,object>)data;
             return json.ContainsKey("port") && Convert.ToInt32(json["port"]) == options.Port && json.ContainsKey("addresses");
         } catch { return false; }
+    }
+
+    // Stops the server that runs from this installation's own Node, and the HLL launcher that started it.
+    // A server outside this installation (another Node, a developer copy) is never touched.
+    bool StopInstalledServer()
+    {
+        string node = Path.GetFullPath(Path.Combine(home,"node","node.exe"));
+        bool found = false;
+        try {
+            using (var search = new ManagementObjectSearcher("SELECT ProcessId, ParentProcessId, ExecutablePath, CommandLine FROM Win32_Process WHERE Name = 'node.exe'"))
+            using (ManagementObjectCollection list = search.Get())
+            foreach (ManagementObject p in list) using (p) {
+                string path = Convert.ToString(p["ExecutablePath"]), command = Convert.ToString(p["CommandLine"]);
+                if (!String.Equals(path,node,StringComparison.OrdinalIgnoreCase) || command.IndexOf("server/index.js",StringComparison.OrdinalIgnoreCase) < 0) continue;
+                found = true;
+                Status("Closing the older HLL version...",-1);
+                // Stop the launcher first, so that it does not report the stopped server.
+                int parent = Convert.ToInt32(p["ParentProcessId"]);
+                try {
+                    using (Process launcher = Process.GetProcessById(parent))
+                        if (launcher.Id != Process.GetCurrentProcess().Id && launcher.ProcessName.StartsWith("HLL",StringComparison.OrdinalIgnoreCase)) { launcher.Kill(); launcher.WaitForExit(5000); }
+                } catch (ArgumentException) { }
+                try { using (Process old = Process.GetProcessById(Convert.ToInt32(p["ProcessId"]))) { old.Kill(); old.WaitForExit(5000); } }
+                catch (ArgumentException) { }
+                Log("Stopped the older server PID " + p["ProcessId"] + " (launcher PID " + parent + ") to install an update.");
+            }
+        } catch (Exception e) { Log("Could not stop the older server: " + e.Message); return false; }
+        if (!found) return false;
+        DateTime until = DateTime.UtcNow.AddSeconds(10);
+        while (Healthy() && DateTime.UtcNow < until) Thread.Sleep(250);
+        return !Healthy();
     }
 
     bool OwnsServer() { return server != null && !server.HasExited; }
