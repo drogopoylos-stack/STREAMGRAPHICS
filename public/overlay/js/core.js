@@ -5,7 +5,9 @@ export const W = 1920;
 export const H = 1080;
 export const TZ = 'Europe/Athens';
 
-const RESERVED = new Set(['scene', 'static', 'bg', 'motion', 'mode', 'data', 'designer', 'capture']);
+const RESERVED = new Set(['scene', 'static', 'bg', 'motion', 'mode', 'data', 'designer', 'capture', 'speed']);
+/** Entrance animation pace (?speed=): a factor for every duration and delay. */
+export const ANIM_SPEEDS = { fast: 0.6, medium: 1, slow: 1.6 };
 
 /** Parse the page query: scene + params + flags (static, bg, mode, data). */
 export function readFlags(search = location.search) {
@@ -19,6 +21,7 @@ export function readFlags(search = location.search) {
     params,
     static: q.get('static') === '1',
     capture: q.get('capture') === '1', // video export: animations are held and stepped frame by frame
+    speed: ANIM_SPEEDS[q.get('speed')] ?? 1,
     bg: q.get('bg') === '0' ? false : q.get('bg') === '1' ? true : null,
     motion: BG_MOTIONS.includes(q.get('motion')) ? q.get('motion') : null,
     mode: mode === 'simple' || mode === 'full' ? mode : null,

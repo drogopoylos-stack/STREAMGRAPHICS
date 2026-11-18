@@ -48,7 +48,10 @@ export function videoSeconds(seconds, introMs) {
 }
 
 /** Render one scene to <outputDir>/<name>.mp4. Returns { file, url, name } like renderScene. */
-export async function renderVideo(scene, params = {}, name, { seconds = 'auto', fps = 30 } = {}, job) {
+export const ANIM_SPEEDS = ['fast', 'medium', 'slow'];
+
+export async function renderVideo(scene, params = {}, name, { seconds = 'auto', speed = 'medium', fps = 30 } = {}, job) {
+  if (!ANIM_SPEEDS.includes(speed)) throw Object.assign(new Error('Choose the animation speed: fast, medium or slow.'), { status: 400 });
   const definition = sceneDefinition(scene);
   if (!definition) throw Object.assign(new Error('Unknown graphic'), { status: 400 });
   if (definition.group === 'social' && params.format == null) params = { ...params, format: 'story' };
@@ -59,6 +62,7 @@ export async function renderVideo(scene, params = {}, name, { seconds = 'auto', 
   const outDir = store.get().settings.outputDir;
   fs.mkdirSync(outDir, { recursive: true });
   const qs = new URLSearchParams({ scene, capture: '1', ...Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== '')) });
+  if (speed !== 'medium') qs.set('speed', speed);
   const b = await renderBrowser();
   const pg = await b.newPage();
   const fileName = `${safeName(name ?? [scene, ...Object.values(params)].join('-'))}.mp4`;

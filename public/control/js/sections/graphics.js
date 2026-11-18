@@ -60,6 +60,13 @@ export function mount(root) {
     if (previewFrame.getAttribute('src') !== url) previewFrame.src = url;
     fitPreview();
   };
+  // Animation speed (Fast / Medium / Slow): the animation preview and the MP4 video.
+  const SPEED_KEY = 'hll-anim-speed';
+  const SPEEDS = ['fast', 'medium', 'slow'];
+  let savedSpeed = 'medium';
+  try { if (SPEEDS.includes(localStorage.getItem(SPEED_KEY))) savedSpeed = localStorage.getItem(SPEED_KEY); } catch { /* default */ }
+  const speed = ctlSegmented({ options: SPEEDS.map(value => ({ value, label: t(`graphics.speed.${value}`) })), value: savedSpeed, size: 'sm' });
+  speed.el.setAttribute('aria-label', t('graphics.speedLabel'));
   // Animation preview: the same graphic with its animations, as in the MP4 video (Replay starts it again).
   const animFrame = h('iframe.export-preview-frame', { title: t('graphics.animTitle'), scrolling: 'no' });
   const animBox = h('div.export-preview.checker', animFrame);
@@ -71,7 +78,7 @@ export function mount(root) {
     animBox.classList.toggle('is-portrait', isPortrait(cue.scene, cue.params));
     animFrame.style.width = `${animSize.width}px`;
     animFrame.style.height = `${animSize.height}px`;
-    const url = sceneUrl(cue.scene, cue.params);
+    const url = sceneUrl(cue.scene, cue.params, { speed: speed.get() === 'medium' ? null : speed.get() });
     if (animFrame.getAttribute('src') !== url) animFrame.src = url;
     fitAnim();
   };
@@ -86,6 +93,8 @@ export function mount(root) {
   const outType = ctlSegmented({ options: [{ value: 'png', label: t('graphics.typePng') }, { value: 'mp4', label: t('graphics.typeMp4') }], value: 'png', size: 'sm' });
   const seconds = ctlSelect({ value: 'auto', options: [{ value: 'auto', label: t('graphics.lengthAuto') }, ...[5, 8, 10, 15].map(n => ({ value: String(n), label: t('graphics.lengthN', { n }) }))] });
   const secondsField = field(t('graphics.length'), seconds, { hint: t('graphics.lengthHint') });
+  const speedField = field(t('graphics.speedLabel'), speed, { hint: t('graphics.speedHint') });
+  speed.el.addEventListener('change', () => { try { localStorage.setItem(SPEED_KEY, speed.get()); } catch { /* memory only */ } paintAnim(builder.get()); });
   secondsField.hidden = true;
   const renderBtn = btn(t('graphics.render'), { kind: 'primary', iconName: 'image' });
   outType.el.addEventListener('change', () => {
@@ -107,7 +116,7 @@ export function mount(root) {
     if (name.get()) body.name = cue.params?.format ? `${name.get()}-${cue.params.format}` : name.get();
     if (outType.get() === 'mp4') {
       try {
-        const job = trackJob(await api.post('/api/render/video', { ...body, seconds: seconds.get() }));
+        const job = trackJob(await api.post('/api/render/video', { ...body, seconds: seconds.get(), speed: speed.get() }));
         setKids(singleOut, jobView(job.id, { compact: true }));
         const stop = watchJob(job.id, current => {
           if (current.status === 'running') return;
@@ -130,7 +139,7 @@ export function mount(root) {
     } catch (e) { toastError(e); }
   }));
   const singlePanel = panel(t('graphics.single'), h('p.panel-sub', t('graphics.singleSub')),
-    builder.el, field(t('graphics.output'), outType), secondsField, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut, preview);
+    builder.el, field(t('graphics.output'), outType), speedField, secondsField, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut, preview);
   // Designer changes are a draft until Apply; the preview and the exports here use the applied design.
   const draftNote = h('div.design-pending', { role: 'status', hidden: true },
     h('p', t('graphics.draftPending')),

@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { readIndex, guessScene } from './output-index.js';
 import { startDataSync, syncNow, syncState } from './data-sync.js';
 import { createFeedPublisher, createFeedClient } from './feed.js';
-import { renderVideo, setVideoPort } from './video.js';
+import { renderVideo, setVideoPort, ANIM_SPEEDS } from './video.js';
 import * as store from './db.js';
 import { ROOT, ASSETS, RAW, newId, deepMerge, isoDay } from './util.js';
 import { startJob, getJob, listJobs, jobsRunning } from './jobs.js';
@@ -472,9 +472,10 @@ app.post('/api/render', wrap(async (req) => {
 }));
 // Animated version of one graphic (MP4). Runs as a job: a video takes from a few seconds to a minute.
 app.post('/api/render/video', wrap(req => {
-  const { scene, params = {}, name, seconds = 'auto' } = req.body ?? {};
+  const { scene, params = {}, name, seconds = 'auto', speed = 'medium' } = req.body ?? {};
   if (typeof scene !== 'string' || !SCENES.includes(scene)) throw fail(400, 'Choose a graphic');
-  return startJob('video', job => renderVideo(scene, { ...params }, name, { seconds }, job));
+  if (!ANIM_SPEEDS.includes(speed)) throw fail(400, 'Choose the animation speed: fast, medium or slow.');
+  return startJob('video', job => renderVideo(scene, { ...params }, name, { seconds, speed }, job));
 }));
 app.post('/api/render/all', wrap(() => startJob('render', (job) => renderAll(job, nextMatch()?.id))));
 

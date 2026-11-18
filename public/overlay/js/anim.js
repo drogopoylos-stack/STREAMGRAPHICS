@@ -3,6 +3,10 @@
 // Keyframes only animate opacity / transform / filter / clip-path so they stay on the compositor.
 // Rule: never put data-in on an element that has its own CSS transform (wrap it instead).
 
+import { ANIM_SPEEDS } from './core.js';
+
+// Fast / Medium / Slow (?speed=) scales the entrance animations only, not the background motion.
+const PACE = globalThis.location ? ANIM_SPEEDS[new URLSearchParams(location.search).get('speed')] ?? 1 : 1;
 const EASE_OUT = 'cubic-bezier(.16,.84,.24,1)';
 const EASE_BACK = 'cubic-bezier(.2,1.25,.35,1)';
 
@@ -56,8 +60,8 @@ export function animateIn(root) {
     const type = el.dataset.in;
     const kf = KF[type] || KF.fade;
     const a = el.animate(placed(el, kf), {
-      duration: Number(el.dataset.dur) || DUR[type] || 600,
-      delay: Number(el.dataset.d) || 0,
+      duration: (Number(el.dataset.dur) || DUR[type] || 600) * PACE,
+      delay: (Number(el.dataset.d) || 0) * PACE,
       easing: EASING[type] || EASE_OUT,
       fill: type === 'flash' ? 'both' : 'backwards',
     });
@@ -69,7 +73,7 @@ export function animateIn(root) {
   if (body && !body.querySelector('[data-in]')) {
     [...body.children].forEach((el, i) => {
       const a = el.animate([{ opacity: 0, translate: '0 60px' }, { opacity: 1, translate: '0 0' }],
-        { duration: 700, delay: 250 + i * 160, easing: EASE_OUT, fill: 'backwards' });
+        { duration: 700 * PACE, delay: (250 + i * 160) * PACE, easing: EASE_OUT, fill: 'backwards' });
       anims.push(a.finished.catch(() => null));
     });
   }
