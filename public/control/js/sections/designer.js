@@ -28,6 +28,15 @@ const fontOptions = (label = 'Original font') => [{ value: '', label }, ...DESIG
 const fontCss = value => DESIGN_FONTS.find(f => f.id === value)?.css || '"Fira Sans Extra Condensed",sans-serif';
 const snapshot = () => JSON.stringify([config, presetName]);
 export const isDirty = () => !!els && snapshot() !== baseline;
+// True when the designer holds changes that live graphics and exports do not use yet (Apply is needed).
+export function unappliedDraft() {
+  let draft = els ? { config, presetName, baseline } : null;
+  if (!draft) { try { draft = JSON.parse(localStorage.getItem(STORAGE)); } catch { draft = null; } }
+  if (!draft?.config) return false;
+  const applied = store.state?.settings?.graphicDesign?.config;
+  if (!applied) return JSON.stringify([draft.config, draft.presetName]) !== draft.baseline;
+  return JSON.stringify(normalizeDesign(draft.config)) !== JSON.stringify(normalizeDesign(applied));
+}
 function persist() {
   try { localStorage.setItem(STORAGE, JSON.stringify({ config, selectedId, presetName, baseline, scene, tab })); } catch { /* Draft stays in memory if storage is unavailable. */ }
 }

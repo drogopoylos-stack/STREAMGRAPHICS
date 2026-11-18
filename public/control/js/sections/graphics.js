@@ -10,6 +10,7 @@ import { sceneBuilder } from '../builder.js';
 import { cueText, sceneUrl, sceneName } from '../scenes.js';
 import { backgroundPanel } from '../background-panel.js';
 import { feedPanel } from '../feed-panel.js';
+import { unappliedDraft } from './designer.js';
 import { filterMenu, applyFacets } from '../filter-menu.js';
 import { guessScene } from '../../../shared/output-types.js';
 import { dimensionsFor, isPortrait, SCENE_DEFINITIONS } from '../../../shared/scenes.js';
@@ -129,7 +130,11 @@ export function mount(root) {
     } catch (e) { toastError(e); }
   }));
   const singlePanel = panel(t('graphics.single'), h('p.panel-sub', t('graphics.singleSub')),
-    builder.el, preview, field(t('graphics.output'), outType), secondsField, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut);
+    builder.el, field(t('graphics.output'), outType), secondsField, field(t('graphics.fileName'), name), h('div.panel-actions', renderBtn, saveBtn), singleOut, preview);
+  // Designer changes are a draft until Apply; the preview and the exports here use the applied design.
+  const draftNote = h('div.design-pending', { role: 'status', hidden: true },
+    h('p', t('graphics.draftPending')),
+    btn(t('graphics.openDesigner'), { size: 'sm', iconName: 'layers', onclick: () => { location.hash = '#/designer'; } }));
   const backgrounds = backgroundPanel({ socialOnly: social });
 
   // Every PNG in the output folder (also renders from earlier sessions), with the menu of the Live page.
@@ -146,10 +151,11 @@ export function mount(root) {
     h('div.files-head', h('div.files-titles', h('h2.panel-title', t('graphics.files')), filesSub)),
     filesMenu.el, filesMsg, filesGrid, filesMore);
 
-  root.append(sectionHead(t('graphics.title'), t(social ? 'remote.socialGraphicsSub' : 'graphics.sub')),
+  root.append(sectionHead(t('graphics.title'), t(social ? 'remote.socialGraphicsSub' : 'graphics.sub')), draftNote,
     h('div.graphics-grid', h('div.col', social ? feedPanel() : null, allPanel, animPanel, backgrounds.el, outPanel), h('div.col', singlePanel)),
     filesPanel);
-  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, filesMenu, filesMore, backgrounds, paintPreview, paintAnim };
+  els = { outField, jobHost, builder, allBtn, filesSub, filesGrid, filesMsg, filesMenu, filesMore, backgrounds, paintPreview, paintAnim, draftNote };
+  paintDraftNote();
   paintPreview(builder.get());
   paintAnim(builder.get());
   onAnyJob(() => paintJob());
@@ -162,6 +168,11 @@ export function mount(root) {
 /** Re-list the output folder whenever the page is opened (files may have changed on disk). */
 export function show() {
   if (files) loadFiles();
+  paintDraftNote();
+}
+
+function paintDraftNote() {
+  if (els) els.draftNote.hidden = !unappliedDraft();
 }
 
 async function loadFiles() {
@@ -274,6 +285,7 @@ export function update(state) {
   els.outField.setValue(state.settings.outputDir);
   els.builder.refresh(state);
   els.backgrounds.update(state);
+  paintDraftNote();
   els.paintPreview(els.builder.get());
   els.paintAnim(els.builder.get());
   paintJob();

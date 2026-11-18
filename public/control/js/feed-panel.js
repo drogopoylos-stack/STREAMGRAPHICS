@@ -39,7 +39,7 @@ export function feedPanel() {
     connectedRow.hidden = !state.connected;
     updateBtn.disabled = state.status === 'updating';
     const label = state.connected ? t(`feed.status.${state.status}`) : t('feed.status.off');
-    status.replaceChildren(badge(label, KIND[state.status] ?? ''), state.lastUpdate ? h('span.muted', t('feed.lastUpdate', { when: fmtStamp(state.lastUpdate) })) : null);
+    status.replaceChildren(...[badge(label, KIND[state.status] ?? ''), state.lastUpdate ? h('span.muted', t('feed.lastUpdate', { when: fmtStamp(state.lastUpdate) })) : null].filter(Boolean));
     detail.textContent = state.message || (state.connected ? t('feed.connectedHint') : t('feed.intro'));
     copyInfo.textContent = state.publishedAt ? `${t('feed.published', { when: fmtStamp(state.publishedAt) })} · ${state.tournaments.join(' · ')}` : '';
   }

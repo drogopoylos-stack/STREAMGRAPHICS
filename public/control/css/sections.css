@@ -417,3 +417,9 @@ body:has(.page:not([hidden]) .save-bar:not([hidden])) .toasts { bottom: 92px; }
 .export-preview { position: relative; width: 100%; max-width: 720px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-2); margin: 16px auto; }
 .export-preview.is-portrait { max-width: 320px; }
 .export-preview-frame { position: absolute; left: 0; top: 0; transform: scale(var(--preview-scale, .2)); transform-origin: 0 0; border: 0; background: transparent; pointer-events: none; color-scheme: light; }
+
+/* Graphics & export: the designer has changes that are not applied yet. */
+.design-pending { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin: 0 0 16px; padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--gold) 10%, transparent); }
+.design-pending[hidden] { display: none; }
+.design-pending p { margin: 0; }

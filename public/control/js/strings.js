@@ -502,6 +502,8 @@ const en = {
     animTitle: 'Animation preview',
     animSub: 'The graphic of Single render with its animation, as in the MP4 video. Choose the motion of the background in the Graphics designer.',
     animReplay: 'Replay',
+    draftPending: 'The Graphics designer has changes that are not applied. The preview and the exports on this page use the applied design. Open the Graphics designer and click Apply to current tournament.',
+    openDesigner: 'Open the Graphics designer',
     output: 'File',
     typePng: 'PNG image',
     typeMp4: 'MP4 video (animated)',
